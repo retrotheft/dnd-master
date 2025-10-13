@@ -1,7 +1,12 @@
-import type { Middleware, DataCallback } from '../core.js'
+import type { Middleware } from '../core.js'
+
+export type GhostHooks = {
+   ghost?: HTMLElement
+}
 
 export function createGhostMiddleware(): Middleware {
    let ghostElement: HTMLElement | null = null
+   let currentDataCallback: any = null
    let isDragging = false
    const emptyImg = new Image()
    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -22,9 +27,10 @@ export function createGhostMiddleware(): Middleware {
 
    return {
       dragstart(event, element, dataCallback) {
+         currentDataCallback = dataCallback
+
          // Hide default drag image IMMEDIATELY
          if (event.dataTransfer) {
-
             event.dataTransfer.setDragImage(emptyImg, 0, 0)
          }
 
@@ -51,12 +57,34 @@ export function createGhostMiddleware(): Middleware {
       },
 
       dragover(event, element, dropCallback, dataCallback) {
-         // Still update on dragover for dropzones (more accurate)
+         // Check if ghost was swapped
+         const newGhost = (currentDataCallback as any)?.ghost
+         if (newGhost && newGhost !== ghostElement) {
+            // Remove old ghost
+            if (ghostElement && document.body.contains(ghostElement)) {
+               document.body.removeChild(ghostElement)
+            }
+
+            // Add new ghost
+            ghostElement = newGhost
+            if (ghostElement) {
+               ghostElement.style.position = 'fixed'
+               ghostElement.style.pointerEvents = 'none'
+               ghostElement.style.zIndex = '9999'
+
+               if (!document.body.contains(ghostElement)) {
+                  document.body.appendChild(ghostElement)
+               }
+            }
+         }
+
+         // Update position
          updateGhostPosition(event)
       },
 
       dragend(event, element, dataCallback) {
          isDragging = false
+         currentDataCallback = null
 
          // Remove global drag listener
          element.removeEventListener('drag', handleGlobalDrag)
