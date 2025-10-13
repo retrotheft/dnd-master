@@ -4,12 +4,16 @@ Limitless, extensible drag and drop for Svelte.
 
 ## Installation
 
-## Features
+## Quickstart
 
-## Usage
+### Draggable
 
-## API
+### Dropzone
 
-## Examples
+## Middleware
 
-## License
+### Validation
+
+### Ghost
+
+## Advanced Usage Examples
