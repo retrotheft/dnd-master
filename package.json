@@ -31,6 +31,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"svelte": "./dist/index.js"
+		},
+		"./middleware": {
+			"types": "./dist/middleware/index.d.ts",
+			"svelte": "./dist/middleware/index.js"
 		}
 	},
 	"peerDependencies": {
@@ -50,6 +54,11 @@
 	"keywords": [
 		"svelte",
 		"drag-and-drop",
-		"dnd"
-	],
+		"dnd",
+		"draggable",
+		"droppable",
+		"sortable",
+		"ui",
+		"component"
+	]
 }
