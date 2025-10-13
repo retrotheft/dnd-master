@@ -1,7 +1,12 @@
 {
 	"name": "dnd-master",
-	"version": "0.0.1",
+	"version": "1.0.0",
+	"description": "Limitless, extensible drag and drop for Svelte",
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/retrotheft/dnd-master.git"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build && npm run prepack",
@@ -43,11 +48,8 @@
 		"vite": "^7.0.4"
 	},
 	"keywords": [
-		"svelte"
+		"svelte",
+		"drag-and-drop",
+		"dnd"
 	],
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"esbuild"
-		]
-	}
 }
