@@ -1,4 +1,4 @@
-import type { Middleware } from '../core.js'
+import type { Middleware, DataCallback } from '../core.js'
 
 export type GhostHooks = {
    ghost?: HTMLElement
@@ -27,7 +27,7 @@ export function createGhostMiddleware(): Middleware {
 
    return {
       dragstart(event, element, dataCallback) {
-         currentDataCallback = dataCallback
+         currentDataCallback = dataCallback as DataCallback<GhostHooks>
 
          // Hide default drag image IMMEDIATELY
          if (event.dataTransfer) {
@@ -35,7 +35,7 @@ export function createGhostMiddleware(): Middleware {
          }
 
          // Use custom ghost from dataCallback
-         ghostElement = (dataCallback as any).ghost
+         ghostElement = currentDataCallback.ghost
          isDragging = true
 
          if (ghostElement) {
@@ -58,7 +58,7 @@ export function createGhostMiddleware(): Middleware {
 
       dragover(event, element, dropCallback, dataCallback) {
          // Check if ghost was swapped
-         const newGhost = (currentDataCallback as any)?.ghost
+         const newGhost = (currentDataCallback as DataCallback<GhostHooks>)?.ghost
          if (newGhost && newGhost !== ghostElement) {
             // Remove old ghost
             if (ghostElement && document.body.contains(ghostElement)) {
