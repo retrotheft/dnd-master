@@ -1,10 +1,10 @@
 <script lang="ts">
    import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
-   import { ghostMiddleware } from '$lib/middleware/ghost.js'
+   import { ghostMiddleware, type GhostHooks } from '$lib/middleware/ghost.js'
    import { validationMiddleware, classes, type ValidationHooks, DataPredicate, DropPredicate } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
-      .use(ghostMiddleware)
+      .use<GhostHooks>(ghostMiddleware)
       .use<ValidationHooks>(validationMiddleware)
 
    let dropCount = $state(0)
@@ -50,7 +50,7 @@
       element.dataset.zone === "premium"
    )
 
-   const premiumItem = canDropOnPremium.soGive(() => "Premium Item")
+   const premiumItem = canDropOnPremium.soGive(() => "Premium Item") as DataCallback<GhostHooks & ValidationHooks>
    premiumItem.ghost = validGhost
    premiumItem.dragstart = (event: DragEvent, element: HTMLElement) => {
       validGhost.textContent = "💎 Premium Item"
