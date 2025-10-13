@@ -86,66 +86,67 @@ export function createDnd<TMiddlewareHooks = {}>(): DndInstance<TMiddlewareHooks
    function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
       dataCallback = _dataCallback
 
+      _dataCallback.dragstart?.(event, element)
+
       for (const middleware of middlewares) {
          middleware.dragstart?.(event, element, _dataCallback)
       }
-      _dataCallback.dragstart?.(event, element)
    }
 
    function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
       event.preventDefault()
 
+      _dataCallback.dragend?.(event, element)
+
       for (const middleware of middlewares) {
          middleware.dragend?.(event, element, _dataCallback)
       }
-
-      _dataCallback.dragend?.(event, element)
-
-      // Call stop if drop didn't succeed
-
 
       dataCallback = () => { }
    }
 
    /* ===================== Drop Events ===================== */
 
-
-
    function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       event.preventDefault()
       const data = dataCallback()
 
+      dropCallback?.dragenter?.(event, element, data)
+      dataCallback.dragenter?.(event, element)
+
       for (const middleware of middlewares) {
          middleware.dragenter?.(event, element, dropCallback, dataCallback)
       }
-      dropCallback?.dragenter?.(event, element, data)
-      dataCallback.dragenter?.(event, element)
    }
 
    function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       event.preventDefault()
       const data = dataCallback()
 
+      dropCallback?.dragover?.(event, element, data)
+      dataCallback.dragover?.(event, element)
+
       for (const middleware of middlewares) {
          middleware.dragover?.(event, element, dropCallback, dataCallback)
       }
-      dropCallback?.dragover?.(event, element, data)
-      dataCallback.dragover?.(event, element)
    }
 
    function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       const data = dataCallback()
 
+      dropCallback?.dragleave?.(event, element, data)
+      dataCallback.dragleave?.(event, element)
+
       for (const middleware of middlewares) {
          middleware.dragleave?.(event, element, dropCallback, dataCallback)
       }
-      dropCallback?.dragleave?.(event, element, data)
-      dataCallback.dragleave?.(event, element)
    }
 
    function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       event.stopPropagation()
       const data = dataCallback()
+
+      dropCallback?.drop?.(event, element, data)
 
       for (const middleware of middlewares) {
          const result = middleware.drop?.(event, element, dropCallback, dataCallback)
@@ -155,14 +156,9 @@ export function createDnd<TMiddlewareHooks = {}>(): DndInstance<TMiddlewareHooks
          }
       }
 
+      dataCallback.drop?.(event, element)
       // Call the main drop handler
       dropCallback?.(data)
-
-      // Call the drop hook (for additional side effects)
-      dropCallback?.drop?.(event, element, data)
-
-      // Call data callback's drop hook
-      dataCallback.drop?.(event, element)
    }
 
    return {

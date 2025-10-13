@@ -28,7 +28,7 @@ The reason for this is that later, we will attach hooks to this callback, so we 
 
 ### Draggable
 
-Now, you're ready to make an element draggable:
+To make an element draggable:
 
 ```svelte
 <div {@attach dnd.draggable(dataCallback)}>{data.name}</div>
@@ -109,3 +109,46 @@ dnd.use(ghost)
 ## Advanced Usage Examples
 
 ### Dynamic Ghosts
+
+Let's set up a simple example where we have a Premium Item that can only drop onto Premium Zones, not Regular zones.
+
+```ts
+const premiumGhost = document.createElement('div')
+premiumGhost.textContent = "💎 Premium Item"
+premiumGhost.style.cssText = `
+   background: #2196f3;
+   color: white;
+   padding: 0.75rem;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+   font-weight: 600;
+   border: 2px solid #1976d2;
+`
+
+const validGhost = document.createElement('div')
+validGhost.textContent = "✅ Can drop here!"
+validGhost.style.cssText = `
+   background: #4caf50;
+   color: white;
+   padding: 0.75rem;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+   font-weight: 600;
+   border: 2px solid #2e7d32;
+`
+
+const invalidGhost = document.createElement('div')
+invalidGhost.textContent = "❌ Wrong zone!"
+invalidGhost.style.cssText = `
+   background: #f44336;
+   color: white;
+   padding: 0.75rem;
+   border-radius: 8px;
+   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+   font-weight: 600;
+   border: 2px solid #c62828;
+`
+
+const canDropOnPremium = DropPredicate(element =>
+   element.dataset.zone === "premium"
+)

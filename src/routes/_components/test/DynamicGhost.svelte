@@ -12,8 +12,20 @@
    let rejectedDrops = $state(0)
    let lastDropped = $state<string>("")
 
-   // Create ghost elements
+   const premiumGhost = document.createElement('div')
+   premiumGhost.textContent = "💎 Premium Item"
+   premiumGhost.style.cssText = `
+      background: #2196f3;
+      color: white;
+      padding: 0.75rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 600;
+      border: 2px solid #1976d2;
+   `
+
    const validGhost = document.createElement('div')
+   validGhost.textContent = "✅ Can drop here!"
    validGhost.style.cssText = `
       background: #4caf50;
       color: white;
@@ -25,6 +37,7 @@
    `
 
    const invalidGhost = document.createElement('div')
+   invalidGhost.textContent = "❌ Wrong zone!"
    invalidGhost.style.cssText = `
       background: #f44336;
       color: white;
@@ -36,7 +49,7 @@
    `
 
    // Dropzone validation
-   const isString = new DataPredicate((data): data is string =>
+   const isString = DataPredicate((data): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
@@ -46,26 +59,29 @@
    classes('valid', 'invalid')(dropCallback.validate)
 
    // Draggable validation + dynamic ghost switching!
-   const canDropOnPremium = new DropPredicate(element =>
+   const canDropOnPremium = DropPredicate(element =>
       element.dataset.zone === "premium"
    )
 
    const premiumItem = canDropOnPremium.soGive(() => "Premium Item") as DataCallback<GhostHooks & ValidationHooks>
-   premiumItem.ghost = validGhost
-   premiumItem.dragstart = (event: DragEvent, element: HTMLElement) => {
-      validGhost.textContent = "💎 Premium Item"
-   }
+   premiumItem.ghost = premiumGhost
+
    // Dynamic ghost switching based on validation!
    premiumItem.dragover = (event: DragEvent, element: HTMLElement) => {
-      const dropzone = (event.target as HTMLElement).closest('[data-zone]') as HTMLElement
-      if (dropzone && canDropOnPremium.validate(dropzone)) {
+      // const dropzone = (event.target as HTMLElement).closest('[data-zone]') as HTMLElement
+      const dropzone = true
+      if (dropzone && canDropOnPremium(element)) {
          premiumItem.ghost = validGhost
-         validGhost.textContent = "✅ Can drop here!"
+
       } else if (dropzone) {
          premiumItem.ghost = invalidGhost
-         invalidGhost.textContent = "❌ Wrong zone!"
       }
    }
+
+   premiumItem.dragleave = (event, element) => {
+      premiumItem.ghost = premiumGhost
+   }
+
    premiumItem.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       validDrops++

@@ -128,25 +128,63 @@ export function validated<T>(
    return dropCallback
 }
 // For dropzone validation (checks data)
-export class DataPredicate<T> {
-   type!: T
+// export class DataPredicate<T> {
+//    type!: T
 
-   constructor(public validate: (data: unknown) => data is T) {}
+//    constructor(public validate: (data: unknown) => data is T) {}
 
-   soDrop(onDrop: (data: T) => void): DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T } {
-      const dropCallback = onDrop as DropCallback<ValidationHooks>
-      dropCallback.validate = this.validate
-      return dropCallback as DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T }
+//    soDrop(onDrop: (data: T) => void): DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T } {
+//       const dropCallback = onDrop as DropCallback<ValidationHooks>
+//       dropCallback.validate = this.validate
+//       return dropCallback as DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T }
+//    }
+// }
+
+export function DataPredicate<T>(validate: (data: unknown) => data is T) {
+   const predicate = validate as typeof validate & {
+      soDrop: (onDrop: (data: T) => void) => DropCallback<ValidationHooks> & { validate: typeof validate }
    }
+
+   predicate.soDrop = (onDrop: (data: T) => void) => {
+      const dropCallback = onDrop as DropCallback<ValidationHooks>
+      dropCallback.validate = validate
+      return dropCallback as DropCallback<ValidationHooks> & { validate: typeof validate }
+   }
+
+   return predicate
 }
+
+// // Usage
+// const isString = DataPredicate((data): data is string => typeof data === "string")
+// if (isString(someData)) { ... }  // Call as function
+// const drop = isString.soDrop(data => { ... })  // Use method
 
 // For draggable validation (checks elements)
-export class DropPredicate {
-   constructor(public validate: (element: HTMLElement) => boolean) {}
+// export class DropPredicate {
+//    constructor(public validate: (element: HTMLElement) => boolean) {}
 
-   soGive(getData: () => unknown): DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean } {
-      const dataCallback = getData as DataCallback<ValidationHooks>
-      dataCallback.validate = this.validate
-      return dataCallback as DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean }
+//    soGive(getData: () => unknown): DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean } {
+//       const dataCallback = getData as DataCallback<ValidationHooks>
+//       dataCallback.validate = this.validate
+//       return dataCallback as DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean }
+//    }
+// }
+
+export function DropPredicate(validate: (element: HTMLElement) => boolean) {
+   const predicate = validate as typeof validate & {
+      soGive: (getData: () => unknown) => DataCallback<ValidationHooks> & { validate: typeof validate }
    }
+
+   predicate.soGive = (getData: () => unknown) => {
+      const dataCallback = getData as DataCallback<ValidationHooks>
+      dataCallback.validate = validate
+      return dataCallback as DataCallback<ValidationHooks> & { validate: typeof validate }
+   }
+
+   return predicate
 }
+
+// Usage
+// const canDropOnPremium = DropPredicate(element => element.dataset.zone === "premium")
+// if (canDropOnPremium(someElement)) { ... }  // Call as function
+// const item = canDropOnPremium.soGive(() => "Premium Item")  // Use method

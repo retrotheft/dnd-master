@@ -82,6 +82,32 @@ export function createGhostMiddleware(): Middleware {
          updateGhostPosition(event)
       },
 
+      dragleave(event, element, dropCallback, dataCallback) {
+         const newGhost = (currentDataCallback as DataCallback<GhostHooks>)?.ghost
+
+         if (newGhost && newGhost !== ghostElement) {
+
+            // Remove old ghost
+            if (ghostElement && document.body.contains(ghostElement)) {
+               document.body.removeChild(ghostElement)
+            }
+
+            // Add new ghost
+            ghostElement = newGhost
+            if (ghostElement) {
+               ghostElement.style.position = 'fixed'
+               ghostElement.style.pointerEvents = 'none'
+               ghostElement.style.zIndex = '9999'
+
+               if (!document.body.contains(ghostElement)) {
+                  document.body.appendChild(ghostElement)
+               }
+            }
+         }
+
+         updateGhostPosition(event)
+      },
+
       dragend(event, element, dataCallback) {
          isDragging = false
          currentDataCallback = null
