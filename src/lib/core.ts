@@ -1,6 +1,6 @@
 import { type Attachment } from "svelte/attachments"
 
-type Hooks = {
+type BaseHooks = {
    dragstart?: (event: DragEvent, element: HTMLElement) => void,
    dragend?: (event: DragEvent, element: HTMLElement) => void,
    dragenter?: (event: DragEvent, element: HTMLElement) => void,
@@ -10,40 +10,51 @@ type Hooks = {
    stop?: (event: DragEvent, element: HTMLElement) => void
 }
 
-export type DataCallback = (() => unknown) & Hooks
-// Generic dropzone callback - no validation semantics in core
-export type DropzoneCallback = Hooks
+export type DataCallback<TMiddlewareHooks = {}> = (() => unknown) & BaseHooks & TMiddlewareHooks
 
-export type Draggable = (dataCallback: DataCallback) => Attachment<HTMLElement>
-export type Dropzone = (dropzoneCallback?: DropzoneCallback) => Attachment<HTMLElement>
+export type DropCallback<TMiddlewareHooks = {}> =
+   ((data: unknown) => void) & {
+      dragenter?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
+      dragover?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
+      dragleave?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
+      drop?: (event: DragEvent, element: HTMLElement, data: unknown) => void
+   } & TMiddlewareHooks
+
+export type Draggable<TMiddlewareHooks = {}> = (dataCallback: DataCallback<TMiddlewareHooks>) => Attachment<HTMLElement>
+export type Dropzone<TMiddlewareHooks = {}> = (dropCallback?: DropCallback<TMiddlewareHooks>) => Attachment<HTMLElement>
 
 export type Middleware = {
-   dragstart?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void,
-   dragend?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void,
-   dragenter?: (event: DragEvent, element: HTMLElement, dropzoneCallback: DropzoneCallback | undefined, dataCallback: DataCallback) => void,
-   dragover?: (event: DragEvent, element: HTMLElement, dropzoneCallback: DropzoneCallback | undefined, dataCallback: DataCallback) => void,
-   dragleave?: (event: DragEvent, element: HTMLElement, dropzoneCallback: DropzoneCallback | undefined, dataCallback: DataCallback) => void,
-   drop?: (event: DragEvent, element: HTMLElement, dropzoneCallback: DropzoneCallback | undefined, dataCallback: DataCallback) => void
+   dragstart?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void | false,
+   dragend?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void | false,
+   dragenter?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
+   dragover?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
+   dragleave?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
+   drop?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | boolean
 }
 
-export type DndInstance = {
-   draggable: Draggable,
-   dropzone: Dropzone,
-   use: (middleware: Middleware) => void
+export type DndInstance<TMiddlewareHooks = {}> = {
+   draggable: Draggable<TMiddlewareHooks>,
+   dropzone: Dropzone<TMiddlewareHooks>,
+   use: <TNewHooks>(middleware: Middleware) => DndInstance<TMiddlewareHooks & TNewHooks>,
 }
 
 // Factory function to create DND instances
-export function createDnd(): DndInstance {
-   let dataCallback: DataCallback | (() => void) & Hooks = () => { }
+export function createDnd<TMiddlewareHooks = {}>(): DndInstance<TMiddlewareHooks> {
+   let dataCallback: DataCallback | (() => void) & BaseHooks = () => { }
    let middlewares: Middleware[] = []
 
-   function use(middleware: Middleware) {
+   function use<TNewHooks>(middleware: Middleware): DndInstance<TMiddlewareHooks & TNewHooks> {
       middlewares.push(middleware)
+      return {
+         draggable,
+         dropzone,
+         use,
+      } as DndInstance<TMiddlewareHooks & TNewHooks>
    }
 
-   /* ===================== Drag Events ===================== */
+   /* ===================== Factories ===================== */
 
-   function draggable(_dataCallback: DataCallback): Attachment<HTMLElement> {
+   function draggable(_dataCallback: DataCallback<TMiddlewareHooks>): Attachment<HTMLElement> {
       return (element: HTMLElement) => {
          element.draggable = true
          element.style.cursor = "grab"
@@ -53,76 +64,104 @@ export function createDnd(): DndInstance {
 
          element.addEventListener("dragstart", handleDragStart)
          element.addEventListener("dragend", handleDragEnd)
-
-         // Attachments don't need to return cleanup functions like actions do
-         // The cleanup happens automatically when the element is removed
       }
    }
 
-   function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
-      dataCallback = _dataCallback
-      for (const middleware of middlewares) middleware.dragstart?.(event, element, _dataCallback)
-      _dataCallback.dragstart?.(event, element)
-   }
-
-   function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
-      event.preventDefault()
-      for (const middleware of middlewares) middleware.dragend?.(event, element, _dataCallback)
-      dataCallback.dragend?.(event, element)
-      dataCallback = () => { }
-   }
-
-   /* ===================== Drop Events ===================== */
-
-   function dropzone(dropzoneCallback?: DropzoneCallback): Attachment<HTMLElement> {
+   function dropzone(dropCallback?: DropCallback<TMiddlewareHooks>): Attachment<HTMLElement> {
       return (element: HTMLElement) => {
-         const handleDragEnter = (e: DragEvent) => dragEnter(e, element, dropzoneCallback)
-         const handleDragOver = (e: DragEvent) => dragOver(e, element, dropzoneCallback)
-         const handleDragLeave = (e: DragEvent) => dragLeave(e, element, dropzoneCallback)
-         const handleDrop = (e: DragEvent) => drop(e, element, dropzoneCallback)
+         const handleDragEnter = (e: DragEvent) => dragEnter(e, element, dropCallback)
+         const handleDragOver = (e: DragEvent) => dragOver(e, element, dropCallback)
+         const handleDragLeave = (e: DragEvent) => dragLeave(e, element, dropCallback)
+         const handleDrop = (e: DragEvent) => drop(e, element, dropCallback)
 
          element.addEventListener("dragenter", handleDragEnter)
          element.addEventListener("dragover", handleDragOver)
          element.addEventListener("dragleave", handleDragLeave)
          element.addEventListener("drop", handleDrop)
-
-         // Attachments don't need to return cleanup functions like actions do
-         // The cleanup happens automatically when the element is removed
       }
    }
 
-   function dragEnter(event: DragEvent, element: HTMLElement, dropzoneCallback?: DropzoneCallback) {
+   /* ===================== Drag Events ===================== */
+
+   function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
+      dataCallback = _dataCallback
+
+      for (const middleware of middlewares) {
+         middleware.dragstart?.(event, element, _dataCallback)
+      }
+      _dataCallback.dragstart?.(event, element)
+   }
+
+   function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
       event.preventDefault()
-      for (const middleware of middlewares) middleware.dragenter?.(event, element, dropzoneCallback, dataCallback)
-      dropzoneCallback?.dragenter?.(event, element)
+
+      for (const middleware of middlewares) {
+         middleware.dragend?.(event, element, _dataCallback)
+      }
+
+      _dataCallback.dragend?.(event, element)
+
+      // Call stop if drop didn't succeed
+
+
+      dataCallback = () => { }
+   }
+
+   /* ===================== Drop Events ===================== */
+
+
+
+   function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
+      event.preventDefault()
+      const data = dataCallback()
+
+      for (const middleware of middlewares) {
+         middleware.dragenter?.(event, element, dropCallback, dataCallback)
+      }
+      dropCallback?.dragenter?.(event, element, data)
       dataCallback.dragenter?.(event, element)
    }
 
-   function dragOver(event: DragEvent, element: HTMLElement, dropzoneCallback?: DropzoneCallback) {
+   function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       event.preventDefault()
-      for (const middleware of middlewares) middleware.dragover?.(event, element, dropzoneCallback, dataCallback)
-      dropzoneCallback?.dragover?.(event, element)
+      const data = dataCallback()
+
+      for (const middleware of middlewares) {
+         middleware.dragover?.(event, element, dropCallback, dataCallback)
+      }
+      dropCallback?.dragover?.(event, element, data)
       dataCallback.dragover?.(event, element)
    }
 
-   function dragLeave(event: DragEvent, element: HTMLElement, dropzoneCallback?: DropzoneCallback) {
-      for (const middleware of middlewares) middleware.dragleave?.(event, element, dropzoneCallback, dataCallback)
-      dropzoneCallback?.dragleave?.(event, element)
+   function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
+      const data = dataCallback()
+
+      for (const middleware of middlewares) {
+         middleware.dragleave?.(event, element, dropCallback, dataCallback)
+      }
+      dropCallback?.dragleave?.(event, element, data)
       dataCallback.dragleave?.(event, element)
    }
 
-   function drop(event: DragEvent, element: HTMLElement, dropzoneCallback?: DropzoneCallback) {
+   function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
       event.stopPropagation()
+      const data = dataCallback()
 
-      // Let middleware handle all logic
       for (const middleware of middlewares) {
-         middleware.drop?.(event, element, dropzoneCallback, dataCallback)
+         const result = middleware.drop?.(event, element, dropCallback, dataCallback)
+         if (result === false) {
+            dataCallback.stop?.(event, element)
+            return
+         }
       }
 
-      // Call dropzone callback's drop hook if it exists
-      dropzoneCallback?.drop?.(event, element)
+      // Call the main drop handler
+      dropCallback?.(data)
 
-      // Always call the dataCallback's drop hook
+      // Call the drop hook (for additional side effects)
+      dropCallback?.drop?.(event, element, data)
+
+      // Call data callback's drop hook
       dataCallback.drop?.(event, element)
    }
 

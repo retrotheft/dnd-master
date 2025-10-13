@@ -1,58 +1,50 @@
 <script lang="ts">
-   // Create an isolated DND instance for this test
-   import { createDnd } from '$lib/core.js'
-   import { createValidationMiddleware, classes, type ValidateCallback } from '$lib/middleware/validate.js'
+   import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
+   import { validationMiddleware, classes, type ValidationHooks, DataPredicate } from '$lib/middleware/validate.js'
 
-   const dnd = createDnd() // Create isolated instance
-   const validation = createValidationMiddleware() // Create isolated validation
-   dnd.use(validation.middleware) // Add validation middleware to THIS instance only
+   const dnd = createDnd().use<ValidationHooks>(validationMiddleware)
 
    let dropCount = $state(0)
    let validDrops = $state(0)
    let rejectedDrops = $state(0)
    let lastDropped = $state<string>("")
 
-   // Data callback
-   const allowedData = () => "Allowed Item"
-   allowedData.drop = () => {
+   // Allowed item data callback
+   const allowedData: DataCallback<ValidationHooks> = () => "Allowed Item"
+   allowedData.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       validDrops++
       console.log("Allowed item was dropped!")
    }
-   allowedData.stop = () => {
+   allowedData.stop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       rejectedDrops++
       console.log("Allowed item drop was rejected")
    }
 
-   const rejectedData = () => "Rejected Item"
-   rejectedData.drop = () => {
+   // Rejected item data callback
+   const rejectedData: DataCallback<ValidationHooks> = () => "Rejected Item"
+   rejectedData.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       validDrops++
       console.log("Rejected item was dropped!")
    }
-   rejectedData.stop = () => {
+   rejectedData.stop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       rejectedDrops++
       console.log("Rejected item drop was rejected")
    }
 
-   // Validation callback with visual feedback
-   const validate: ValidateCallback = (getData) => {
-      const data = getData()
-      if (data === "Rejected Item") {
-         return // Validation failed - return undefined
-      }
-      return () => {
-         lastDropped = data as string
-         console.log(`Validation passed for: ${data}`)
-         return true
-      }
-   }
+   const isString = new DataPredicate((data): data is string =>
+      typeof data === "string" && data !== "Rejected Item"
+   )
 
-   // Add visual feedback classes
-   const setupClasses = classes('valid', 'invalid')
-   setupClasses(validate)
+   const dropCallback = isString.soDrop(data => {
+      lastDropped = data  // data is correctly typed!
+   })
+
+   // Add visual feedback classes to the validate function
+   classes('valid', 'invalid')(dropCallback.validate)
 </script>
 
 <div class="container">
@@ -67,7 +59,7 @@
       Drag me (will be rejected) ❌
    </div>
 
-   <div class="dropzone" {@attach validation.validatingDropzone(dnd, validate)}>
+   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
       Drop here: {lastDropped || "empty"}
    </div>
 

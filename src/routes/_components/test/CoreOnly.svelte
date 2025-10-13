@@ -17,12 +17,9 @@
       console.log("Drop was rejected")
    }
 
-   // Simple dropzone callback
-   const dropzoneCallbacks = {
-      drop: () => {
-         lastDropped = "Basic Item"
-         console.log("Dropzone received item")
-      }
+   const dropCallback = (data: unknown) => {
+      lastDropped = "Basic Item"
+      console.log("Dropzone received item")
    }
 </script>
 
@@ -34,7 +31,7 @@
       Drag me (basic)
    </div>
 
-   <div class="dropzone" {@attach dnd.dropzone(dropzoneCallbacks)}>
+   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
       Drop here: {lastDropped || "empty"}
    </div>
 

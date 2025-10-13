@@ -1,4 +1,4 @@
-import type { Middleware, DataCallback } from './core.js'
+import type { Middleware, DataCallback } from '../core.js'
 
 export function createGhostMiddleware(): Middleware {
    let ghostElement: HTMLElement | null = null
@@ -50,7 +50,7 @@ export function createGhostMiddleware(): Middleware {
          element.addEventListener('drag', handleGlobalDrag)
       },
 
-      dragover(event, element, dropzoneCallback, dataCallback) {
+      dragover(event, element, dropCallback, dataCallback) {
          // Still update on dragover for dropzones (more accurate)
          updateGhostPosition(event)
       },
@@ -70,4 +70,4 @@ export function createGhostMiddleware(): Middleware {
 }
 
 // Backward compatibility export
-export const ghostMiddleware = createGhostMiddleware
+export const ghostMiddleware = createGhostMiddleware()

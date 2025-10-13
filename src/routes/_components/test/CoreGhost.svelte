@@ -1,10 +1,8 @@
 <script lang="ts">
-   // Create an isolated DND instance for this test
    import { createDnd } from '$lib/core.js'
-   import { createGhostMiddleware } from '$lib/middleware/ghost.js'
+   import { ghostMiddleware } from '$lib/middleware/ghost.js'
 
-   const dnd = createDnd() // Create isolated instance
-   dnd.use(createGhostMiddleware()) // Add ghost middleware to THIS instance only
+   const dnd = createDnd().use(ghostMiddleware)
 
    let dropCount = $state(0)
    let lastDropped = $state("")
@@ -22,23 +20,20 @@
    // Data callback with ghost
    const itemData = () => "Ghost Item"
    itemData.ghost = ghost
-   itemData.dragstart = () => {
+   itemData.dragstart = (event: DragEvent, element: HTMLElement) => {
       ghost.textContent = "👻 Ghost Item"
    }
-   itemData.drop = () => {
+   itemData.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       console.log("Ghost item was dropped!")
    }
-   itemData.stop = () => {
-      console.log("Ghost drop was rejected")
+   itemData.stop = (event: DragEvent, element: HTMLElement) => {
+      console.log("Ghost drop was cancelled")
    }
 
-   // Simple dropzone callback
-   const dropzoneCallbacks = {
-      drop: () => {
-         lastDropped = "Ghost Item"
-         console.log("Dropzone received ghost item")
-      }
+   const dropCallback = (data: unknown) => {
+      lastDropped = "Ghost Item"
+      console.log("Dropzone received ghost item")
    }
 </script>
 
@@ -50,7 +45,7 @@
       Drag me (with ghost) 👻
    </div>
 
-   <div class="dropzone" {@attach dnd.dropzone(dropzoneCallbacks)}>
+   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
       Drop here: {lastDropped || "empty"}
    </div>
 

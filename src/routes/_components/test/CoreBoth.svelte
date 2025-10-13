@@ -1,13 +1,11 @@
 <script lang="ts">
-   // Create an isolated DND instance for this test
    import { createDnd } from '$lib/core.js'
-   import { createGhostMiddleware } from '$lib/middleware/ghost.js'
-   import { createValidationMiddleware, classes, type ValidateCallback } from '$lib/middleware/validate.js'
+   import { ghostMiddleware } from '$lib/middleware/ghost.js'
+   import { validationMiddleware, classes, DataPredicate } from '$lib/middleware/validate.js'
 
-   const dnd = createDnd() // Create isolated instance
-   const validation = createValidationMiddleware() // Create isolated validation
-   dnd.use(createGhostMiddleware()) // Add ghost middleware
-   dnd.use(validation.middleware) // Add validation middleware
+   const dnd = createDnd()
+      .use(ghostMiddleware)
+      .use(validationMiddleware)
 
    let dropCount = $state(0)
    let validDrops = $state(0)
@@ -36,15 +34,15 @@
    // Allowed item data callback
    const allowedData = () => "Premium Item"
    allowedData.ghost = allowedGhost
-   allowedData.dragstart = () => {
+   allowedData.dragstart = (event: DragEvent, element: HTMLElement) => {
       allowedGhost.textContent = "✨ Premium Item"
    }
-   allowedData.drop = () => {
+   allowedData.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       validDrops++
       console.log("Premium item was dropped!")
    }
-   allowedData.stop = () => {
+   allowedData.stop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       rejectedDrops++
       console.log("Premium item drop was rejected")
@@ -53,36 +51,28 @@
    // Rejected item data callback
    const rejectedData = () => "Forbidden Item"
    rejectedData.ghost = rejectedGhost
-   rejectedData.dragstart = () => {
+   rejectedData.dragstart = (event: DragEvent, element: HTMLElement) => {
       rejectedGhost.textContent = "🚫 Forbidden Item"
    }
-   rejectedData.drop = () => {
+   rejectedData.drop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       validDrops++
       console.log("Forbidden item was dropped!")
    }
-   rejectedData.stop = () => {
+   rejectedData.stop = (event: DragEvent, element: HTMLElement) => {
       dropCount++
       rejectedDrops++
       console.log("Forbidden item drop was rejected")
    }
 
-   // Validation callback with visual feedback
-   const validate: ValidateCallback = (getData) => {
-      const data = getData()
-      if (data === "Forbidden Item") {
-         return // Validation failed
-      }
-      return () => {
-         lastDropped = data as string
-         console.log(`Validation passed for: ${data}`)
-         return true
-      }
-   }
+   const isString = new DataPredicate((data): data is string =>
+      typeof data === "string" && data !== "Forbidden Item"
+   )
+
+   const dropCallback = isString.soDrop(data => lastDropped = data)
 
    // Add visual feedback classes
-   const setupClasses = classes('valid', 'invalid')
-   setupClasses(validate)
+   classes('valid', 'invalid')(dropCallback.validate)
 </script>
 
 <div class="container">
@@ -97,7 +87,7 @@
       Drag me (forbidden) 🚫
    </div>
 
-   <div class="dropzone" {@attach validation.validatingDropzone(dnd, validate)}>
+   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
       Drop here: {lastDropped || "empty"}
    </div>
 
@@ -111,7 +101,6 @@
       Watch for: custom ghost images, color changes on hover (green=valid, red=invalid)
    </small></p>
 </div>
-
 <style>
    .container {
       border: 2px solid #9c27b0;

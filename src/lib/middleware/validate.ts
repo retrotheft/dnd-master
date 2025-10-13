@@ -1,133 +1,152 @@
-import type { Middleware, DataCallback, DropzoneCallback, DndInstance } from "./core.js"
+import type { Middleware, DataCallback, DropCallback } from "../core.js"
 
-// Validation types (moved from core)
-export type DropCallback = (() => boolean) & DropzoneCallback
-export type ValidateCallback = ((dataCallback: DataCallback) => DropCallback | void) & DropzoneCallback
+export type ValidationHooks = {
+   validate?: ( ((data: unknown) => boolean) | ((element: HTMLElement) => boolean) ) & {
+      pass?: (event: DragEvent, element: HTMLElement) => void
+      fail?: (event: DragEvent, element: HTMLElement) => void
+      exit?: (event: DragEvent, element: HTMLElement) => void
+      enter?: (event: DragEvent, element: HTMLElement) => void
+      dragover?: (event: DragEvent, element: HTMLElement) => void
+      dragleave?: (event: DragEvent, element: HTMLElement) => void
+      drop?: (event: DragEvent, element: HTMLElement) => void
+   }
+}
 
-// Create validation middleware factory that works with individual DND instances
-export function createValidationMiddleware() {
-   // Store validation callbacks on elements
-   const validationCallbacks = new WeakMap<HTMLElement, ValidateCallback>()
+// Validation middleware - extends DND with validation hooks
+export const validationMiddleware: Middleware = (() => {
+   // Cache validation results during drag operations
+   let validationCache = new WeakMap<HTMLElement, {
+      data: unknown,
+      isValid: boolean
+   }>()
 
-   // Validation middleware that adds all validation semantics
-   const middleware: Middleware = (() => {
-      let validationCache = new WeakMap<HTMLElement, { data: unknown, isValid: boolean, dropCallback?: DropCallback | void }>()
+   return {
+      dragend(event, element, dataCallback) {
+         // Clear cache when drag ends
+         validationCache = new WeakMap()
+      },
 
-      return {
-         dragend(event, element, dataCallback) {
-            validationCache = new WeakMap()
-         },
+      dragenter(event, element, dropCallback, dataCallback) {
+         // Just call the enter hook if it exists
+         const validate = (dropCallback as any)?.validate
+         validate?.enter?.(event, element)
+      },
 
-         dragenter(event, element, dropzoneCallback, dataCallback) {
-            const validateCallback = validationCallbacks.get(element)
-            if (validateCallback) {
-               validateCallback.dragenter?.(event, element)
+      dragover(event, element, dropCallback, dataCallback) {
+         const validate = (dropCallback as any)?.validate
+         if (!validate) return
+
+         const data = dataCallback()
+         const cached = validationCache.get(element)
+
+         // Only re-validate if data changed
+         if (!cached || cached.data !== data) {
+            // Check draggable validation
+            const itemValidate = (dataCallback as any).validate
+            let isValid = true
+
+            if (itemValidate && !itemValidate(element)) {
+               isValid = false
             }
-         },
 
-         dragover(event, element, dropzoneCallback, dataCallback) {
-            const validateCallback = validationCallbacks.get(element)
-            if (!validateCallback) return
-
-            const target = event.target as HTMLElement
-            const currentData = dataCallback()
-            const cached = validationCache.get(target)
-
-            if (!cached || cached.data !== currentData) {
-               const dropCallback = validateCallback(dataCallback)
-               const isValid = dropCallback !== undefined
-               validationCache.set(target, { data: currentData, isValid, dropCallback })
-
-               const func = isValid ? 'pass' : 'fail'
-               ;(validateCallback as any)[`_${func}`]?.(event, element)
-               ;(validateCallback as any)[func]?.(event, element)
+            // Check dropzone validation
+            if (isValid && !validate(data)) {
+               isValid = false
             }
 
-            validateCallback.dragover?.(event, element)
-         },
+            // Cache result
+            validationCache.set(element, { data, isValid })
 
-         dragleave(event, element, dropzoneCallback, dataCallback) {
-            const validateCallback = validationCallbacks.get(element)
-            if (validateCallback) {
-               validationCache.delete(element)
-               ;(validateCallback as any)._exit?.(event, element)
-               ;(validateCallback as any).exit?.(event, element)
-               validateCallback.dragleave?.(event, element)
-            }
-         },
-
-         drop(event, element, dropzoneCallback, dataCallback) {
-            const validateCallback = validationCallbacks.get(element)
-            if (!validateCallback) return
-
-            const cached = validationCache.get(element)
-
-            // Execute validation and drop logic
-            if (cached?.isValid && cached.dropCallback && typeof cached.dropCallback === 'function') {
-               const success = cached.dropCallback()
-               if (!success) {
-                  dataCallback.stop?.(event, element)
-               }
+            // Call visual feedback hooks
+            if (isValid) {
+               validate.pass?.(event, element)
             } else {
-               dataCallback.stop?.(event, element)
+               validate.fail?.(event, element)
             }
-
-            // Clean up
-            validateCallback.drop?.(event, element)
-            ;(validateCallback as any)._exit?.(event, element)
-            ;(validateCallback as any).exit?.(event, element)
-            validationCache.delete(element)
          }
-      }
-   })()
 
-   // Helper to create validation-enabled dropzones for this instance
-   function validatingDropzone(dnd: DndInstance, validateCallback: ValidateCallback) {
-      return (element: HTMLElement) => {
-         // Store the validation callback for this element
-         validationCallbacks.set(element, validateCallback)
+         // Always call dragover hook
+         validate.dragover?.(event, element)
+      },
 
-         // Also attach the basic dropzone functionality
-         const dropzoneAttachment = dnd.dropzone()
-         dropzoneAttachment(element)
+      dragleave(event, element, dropCallback, dataCallback) {
+         const validate = (dropCallback as any)?.validate
+         if (validate) {
+            validationCache.delete(element)
+            validate.exit?.(event, element)
+            validate.dragleave?.(event, element)
+         }
+      },
 
-         // Attachments don't need to return cleanup functions like actions do
-         // The cleanup happens automatically when the element is removed
+      drop(event, element, dropCallback, dataCallback) {
+         const cached = validationCache.get(element)
+
+         // Clean up first
+         const validate = (dropCallback as any)?.validate
+         if (validate) {
+            validate.exit?.(event, element)
+            validate.drop?.(event, element)
+         }
+         validationCache.delete(element)
+
+         // If validation failed, abort drop
+         if (cached && !cached.isValid) {
+            return false  // Core will call dataCallback.stop()
+         }
+
+         // Validation passed or didn't exist - continue
+         return true  // Core will call dataCallback.drop()
       }
    }
+})()
 
-   return { middleware, validatingDropzone }
-}
-
-// Default singleton instance for backward compatibility
-const defaultValidation = createValidationMiddleware()
-export const validationMiddleware = defaultValidation.middleware
-
-// This is a simplified version for backward compatibility
-// For full functionality, use createValidationMiddleware() with isolated instances
-export function validatingDropzone(validateCallback: ValidateCallback) {
-   return (element: HTMLElement) => {
-      console.warn('Using legacy validatingDropzone - consider using createValidationMiddleware() for better isolation')
-      // Basic implementation without proper dropzone attachment
-      // This is for backward compatibility only
-   }
-}
-
-// Classes utility for validation middleware
+// Utility to add visual feedback classes to validate hooks
 export function classes(validClass = 'valid', invalidClass = 'invalid') {
-   return (func: Function) => {
-      Object.assign(func, {
-         _pass: (event: DragEvent, element: HTMLElement) => {
+   return (validate: Function) => {
+      Object.assign(validate, {
+         pass: (event: DragEvent, element: HTMLElement) => {
             element.classList.remove(invalidClass)
             element.classList.add(validClass)
          },
-         _fail: (event: DragEvent, element: HTMLElement) => {
+         fail: (event: DragEvent, element: HTMLElement) => {
             element.classList.remove(validClass)
             element.classList.add(invalidClass)
          },
-         _exit: (event: DragEvent, element: HTMLElement) => {
+         exit: (event: DragEvent, element: HTMLElement) => {
             element.classList.remove(validClass, invalidClass)
          }
       })
+   }
+}
+
+export function validated<T>(
+   validate: (data: unknown) => data is T,
+   onDrop: (data: T) => void
+): DropCallback {
+   const dropCallback = onDrop as DropCallback<ValidationHooks>
+   dropCallback.validate = validate
+   return dropCallback
+}
+// For dropzone validation (checks data)
+export class DataPredicate<T> {
+   type!: T
+
+   constructor(public validate: (data: unknown) => data is T) {}
+
+   soDrop(onDrop: (data: T) => void): DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T } {
+      const dropCallback = onDrop as DropCallback<ValidationHooks>
+      dropCallback.validate = this.validate
+      return dropCallback as DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T }
+   }
+}
+
+// For draggable validation (checks elements)
+export class DropPredicate {
+   constructor(public validate: (element: HTMLElement) => boolean) {}
+
+   soGive(getData: () => unknown): DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean } {
+      const dataCallback = getData as DataCallback<ValidationHooks>
+      dataCallback.validate = this.validate
+      return dataCallback as DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean }
    }
 }
