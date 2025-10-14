@@ -10,7 +10,7 @@
    let lastDropped = $state<string>("")
 
    // Define what data is valid (dropzone-side validation)
-   const isString = dnd.DataPredicate((data: unknown): data is string =>
+   const isString = dnd.assertData((data: unknown): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
@@ -19,7 +19,7 @@
    })
 
    // Define what can drop on "premium" zones (draggable-side validation)
-   const canDropOnPremium = dnd.DropPredicate((element: HTMLElement) =>
+   const canDropOnPremium = dnd.assertZone((element: HTMLElement) =>
       element.dataset.zone === "premium"
    )
 

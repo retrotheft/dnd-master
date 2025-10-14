@@ -1,6 +1,6 @@
 import { type Attachment } from "svelte/attachments"
 
-type BaseHooks = {
+export type BaseHooks = {
    dragstart?: (event: DragEvent, element: HTMLElement) => void,
    dragend?: (event: DragEvent, element: HTMLElement) => void,
    dragenter?: (event: DragEvent, element: HTMLElement) => void,
@@ -10,7 +10,7 @@ type BaseHooks = {
    stop?: (event: DragEvent, element: HTMLElement) => void
 }
 
-type DropzoneBaseHooks = {
+export type DropzoneBaseHooks = {
    dragenter?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
    dragover?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
    dragleave?: (event: DragEvent, element: HTMLElement, data: unknown) => void,

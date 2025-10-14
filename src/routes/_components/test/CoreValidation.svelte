@@ -37,7 +37,7 @@
    })
 
    // Use DataPredicate extension for type-safe validation
-   const isString = dnd.DataPredicate((data: unknown): data is string =>
+   const isString = dnd.assertData((data: unknown): data is string =>
       typeof data === "string" && data !== "Rejected Item"
    )
 

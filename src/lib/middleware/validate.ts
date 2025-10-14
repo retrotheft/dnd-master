@@ -1,4 +1,4 @@
-import type { Middleware, Draggable, Dropzone } from "../core.js"
+import type { Middleware, Draggable, Dropzone, BaseHooks, DropzoneBaseHooks } from "../core.js"
 import type { Attachment } from "svelte/attachments"
 
 export type ValidationHooks = {
@@ -14,12 +14,12 @@ export type ValidationHooks = {
 }
 
 export type ValidationExtensions = {
-   DataPredicate: <T>(validate: (data: unknown) => data is T) => {
+   assertData: <T>(validate: (data: unknown) => data is T) => {
       soDrag: (data: T, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
-      soDrop: (onDrop: (data: T) => void, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
+      soDrop: (onDrop: (data: T) => void, hooks?: Partial<DropzoneBaseHooks & ValidationHooks>) => Attachment<HTMLElement>
    },
-   DropPredicate: (validate: (element: HTMLElement) => boolean) => {
-      soGive: (data: unknown, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
+   assertZone: (validate: (element: HTMLElement) => boolean) => {
+      soGive: (data: unknown, hooks?: Partial<BaseHooks & ValidationHooks>) => Attachment<HTMLElement>
    },
    classes: (validClass?: string, invalidClass?: string) => void
 }
@@ -59,7 +59,7 @@ export const validationMiddleware: Middleware<ValidationHooks, ValidationExtensi
          }
 
          return {
-            DataPredicate: <T>(validate: (data: unknown) => data is T) => ({
+            assertData: <T>(validate: (data: unknown) => data is T) => ({
                soDrag: (data: T, hooks?: Partial<ValidationHooks>) => {
                   applyDefaultClassHooks(validate)
                   return draggable(data, { ...hooks, validate } as any)
@@ -69,7 +69,7 @@ export const validationMiddleware: Middleware<ValidationHooks, ValidationExtensi
                   return dropzone(onDrop as any, { ...hooks, validate } as any)
                }
             }),
-            DropPredicate: (validate: (element: HTMLElement) => boolean) => ({
+            assertZone: (validate: (element: HTMLElement) => boolean) => ({
                soGive: (data: unknown, hooks?: Partial<ValidationHooks>) => {
                   applyDefaultClassHooks(validate)
                   return draggable(data, { ...hooks, validate } as any)
