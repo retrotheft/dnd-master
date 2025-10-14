@@ -4,9 +4,8 @@ export type GhostHooks = {
    ghost?: HTMLElement
 }
 
-export function createGhostMiddleware(): Middleware {
+export function createGhostMiddleware(): Middleware<GhostHooks> {
    let ghostElement: HTMLElement | null = null
-   let currentDataCallback: any = null
    let isDragging = false
    const emptyImg = new Image()
    emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
@@ -15,6 +14,32 @@ export function createGhostMiddleware(): Middleware {
       if (ghostElement && isDragging) {
          ghostElement.style.left = event.clientX + 10 + 'px'
          ghostElement.style.top = event.clientY + 10 + 'px'
+      }
+   }
+
+   function swapGhost(newGhost: HTMLElement | undefined, event: DragEvent) {
+      // If no new ghost or same ghost, just update position
+      if (!newGhost || newGhost === ghostElement) {
+         updateGhostPosition(event)
+         return
+      }
+
+      // Remove old ghost
+      if (ghostElement && document.body.contains(ghostElement)) {
+         document.body.removeChild(ghostElement)
+      }
+
+      // Set up new ghost
+      ghostElement = newGhost
+      ghostElement.style.position = 'fixed'
+      ghostElement.style.pointerEvents = 'none'
+      ghostElement.style.zIndex = '9999'
+      ghostElement.style.left = event.clientX + 10 + 'px'
+      ghostElement.style.top = event.clientY + 10 + 'px'
+
+      // Only add to DOM if not already there
+      if (!document.body.contains(ghostElement)) {
+         document.body.appendChild(ghostElement)
       }
    }
 
@@ -27,29 +52,18 @@ export function createGhostMiddleware(): Middleware {
 
    return {
       dragstart(event, element, dataCallback) {
-         currentDataCallback = dataCallback as DataCallback<GhostHooks>
+         const typedCallback = dataCallback as DataCallback<GhostHooks>
 
          // Hide default drag image IMMEDIATELY
          if (event.dataTransfer) {
             event.dataTransfer.setDragImage(emptyImg, 0, 0)
          }
 
-         // Use custom ghost from dataCallback
-         ghostElement = currentDataCallback.ghost
          isDragging = true
 
-         if (ghostElement) {
-            // Reset positioning and set up for current drag
-            ghostElement.style.position = 'fixed'
-            ghostElement.style.pointerEvents = 'none'
-            ghostElement.style.zIndex = '9999'
-            ghostElement.style.left = event.clientX + 10 + 'px'
-            ghostElement.style.top = event.clientY + 10 + 'px'
-
-            // Only add to DOM if not already there
-            if (!document.body.contains(ghostElement)) {
-               document.body.appendChild(ghostElement)
-            }
+         // Set up ghost if provided
+         if (typedCallback.ghost) {
+            swapGhost(typedCallback.ghost, event)
          }
 
          // Add global drag listener to the dragged element itself
@@ -57,64 +71,22 @@ export function createGhostMiddleware(): Middleware {
       },
 
       dragover(event, element, dropCallback, dataCallback) {
-         // Check if ghost was swapped
-         const newGhost = (currentDataCallback as DataCallback<GhostHooks>)?.ghost
-         if (newGhost && newGhost !== ghostElement) {
-            // Remove old ghost
-            if (ghostElement && document.body.contains(ghostElement)) {
-               document.body.removeChild(ghostElement)
-            }
-
-            // Add new ghost
-            ghostElement = newGhost
-            if (ghostElement) {
-               ghostElement.style.position = 'fixed'
-               ghostElement.style.pointerEvents = 'none'
-               ghostElement.style.zIndex = '9999'
-
-               if (!document.body.contains(ghostElement)) {
-                  document.body.appendChild(ghostElement)
-               }
-            }
-         }
-
-         // Update position
-         updateGhostPosition(event)
+         const typedCallback = dataCallback as DataCallback<GhostHooks>
+         swapGhost(typedCallback.ghost, event)
       },
 
       dragleave(event, element, dropCallback, dataCallback) {
-         const newGhost = (currentDataCallback as DataCallback<GhostHooks>)?.ghost
-
-         if (newGhost && newGhost !== ghostElement) {
-
-            // Remove old ghost
-            if (ghostElement && document.body.contains(ghostElement)) {
-               document.body.removeChild(ghostElement)
-            }
-
-            // Add new ghost
-            ghostElement = newGhost
-            if (ghostElement) {
-               ghostElement.style.position = 'fixed'
-               ghostElement.style.pointerEvents = 'none'
-               ghostElement.style.zIndex = '9999'
-
-               if (!document.body.contains(ghostElement)) {
-                  document.body.appendChild(ghostElement)
-               }
-            }
-         }
-
-         updateGhostPosition(event)
+         const typedCallback = dataCallback as DataCallback<GhostHooks>
+         swapGhost(typedCallback.ghost, event)
       },
 
       dragend(event, element, dataCallback) {
          isDragging = false
-         currentDataCallback = null
 
          // Remove global drag listener
          element.removeEventListener('drag', handleGlobalDrag)
 
+         // Clean up ghost
          if (ghostElement && document.body.contains(ghostElement)) {
             document.body.removeChild(ghostElement)
             ghostElement = null

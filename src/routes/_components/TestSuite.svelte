@@ -2,9 +2,9 @@
    import CoreOnly from './test/CoreOnly.svelte'
    import CoreValidation from './test/CoreValidation.svelte'
    import CoreGhost from './test/CoreGhost.svelte'
-   import CoreBoth from './test/CoreBoth.svelte'
+   // import CoreBoth from './test/CoreBoth.svelte'
    import TwoWayValidation from './test/TwoWayValidation.svelte'
-   import DynamicGhost from './test/DynamicGhost.svelte'
+   // import DynamicGhost from './test/DynamicGhost.svelte'
 </script>
 
 <main>
@@ -14,9 +14,9 @@
    <CoreOnly />
    <CoreValidation />
    <CoreGhost />
-   <CoreBoth />
+   <!-- <CoreBoth /> -->
    <TwoWayValidation />
-   <DynamicGhost />
+   <!-- <DynamicGhost /> -->
 </main>
 
 <style>

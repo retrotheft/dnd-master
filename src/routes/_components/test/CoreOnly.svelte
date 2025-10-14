@@ -7,31 +7,28 @@
    let dropCount = $state(0)
    let lastDropped = $state("")
 
-   // Simple data callback
-   const itemData = () => "Basic Item"
-   itemData.drop = () => {
-      dropCount++
-      console.log("Item was dropped!")
-   }
-   itemData.stop = () => {
-      console.log("Drop was rejected")
-   }
+   const item = dnd.draggable("Basic Item", {
+      drop: () => {
+         dropCount++
+         console.log("Item was dropped!")
+      }
+   })
 
-   const dropCallback = (data: unknown) => {
+   const dropzone = dnd.dropzone(data => {
       lastDropped = "Basic Item"
       console.log("Dropzone received item")
-   }
+   })
 </script>
 
 <div class="container">
    <h3>Core Only Test</h3>
    <p>Basic drag and drop without any middleware</p>
 
-   <div class="draggable" {@attach dnd.draggable(itemData)}>
+   <div class="draggable" {@attach item}>
       Drag me (basic)
    </div>
 
-   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
+   <div class="dropzone" {@attach dropzone}>
       Drop here: {lastDropped || "empty"}
    </div>
 

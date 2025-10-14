@@ -17,35 +17,35 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
    `
 
-   const item = dnd.draggable("Ghost Item", {
-      ghost,
-      dragstart: (event: DragEvent, element: HTMLElement) => {
-         ghost.textContent = "👻 Ghost Item"
-      },
-      drop: (event: DragEvent, element: HTMLElement) => {
-         dropCount++
-         console.log("Ghost item was dropped!")
-      },
-      stop: (event: DragEvent, element: HTMLElement) => {
-         console.log("Ghost drop was cancelled")
-      }
-   })
+   // Data callback with ghost
+   const itemData = () => "Ghost Item"
+   itemData.ghost = ghost
+   itemData.dragstart = (event: DragEvent, element: HTMLElement) => {
+      ghost.textContent = "👻 Ghost Item"
+   }
+   itemData.drop = (event: DragEvent, element: HTMLElement) => {
+      dropCount++
+      console.log("Ghost item was dropped!")
+   }
+   itemData.stop = (event: DragEvent, element: HTMLElement) => {
+      console.log("Ghost drop was cancelled")
+   }
 
-   const dropzone = dnd.dropzone(data => {
+   const dropCallback = (data: unknown) => {
       lastDropped = "Ghost Item"
       console.log("Dropzone received ghost item")
-   })
+   }
 </script>
 
 <div class="container">
    <h3>Core + Ghost Test</h3>
    <p>Drag and drop with custom ghost image</p>
 
-   <div class="draggable" {@attach item}>
+   <div class="draggable" {@attach dnd.draggable(itemData)}>
       Drag me (with ghost) 👻
    </div>
 
-   <div class="dropzone" {@attach dropzone}>
+   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
       Drop here: {lastDropped || "empty"}
    </div>
 

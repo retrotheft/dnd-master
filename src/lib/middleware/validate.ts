@@ -1,7 +1,8 @@
-import type { Middleware, DataCallback, DropCallback } from "../core.js"
+import type { Middleware, Draggable, Dropzone } from "../core.js"
+import type { Attachment } from "svelte/attachments"
 
 export type ValidationHooks = {
-   validate?: ( ((data: unknown) => boolean) | ((element: HTMLElement) => boolean) ) & {
+   validate?: (((data: unknown) => boolean) | ((element: HTMLElement) => boolean)) & {
       pass?: (event: DragEvent, element: HTMLElement) => void
       fail?: (event: DragEvent, element: HTMLElement) => void
       exit?: (event: DragEvent, element: HTMLElement) => void
@@ -12,15 +13,75 @@ export type ValidationHooks = {
    }
 }
 
+export type ValidationExtensions = {
+   DataPredicate: <T>(validate: (data: unknown) => data is T) => {
+      soDrag: (data: T, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
+      soDrop: (onDrop: (data: T) => void, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
+   },
+   DropPredicate: (validate: (element: HTMLElement) => boolean) => {
+      soGive: (data: unknown, hooks?: Partial<ValidationHooks>) => Attachment<HTMLElement>
+   },
+   classes: (validClass?: string, invalidClass?: string) => void
+}
+
 // Validation middleware - extends DND with validation hooks
-export const validationMiddleware: Middleware = (() => {
+export const validationMiddleware: Middleware<ValidationHooks, ValidationExtensions> = (() => {
    // Cache validation results during drag operations
    let validationCache = new WeakMap<HTMLElement, {
       data: unknown,
       isValid: boolean
    }>()
+   let classes = {
+      valid: 'valid',
+      invalid: 'invalid'
+   }
 
    return {
+      extensions(draggable: Draggable<any>, dropzone: Dropzone<any>) {
+         const applyDefaultClassHooks = (validate: any) => {
+            if (!validate.pass) {
+               validate.pass = (event: DragEvent, element: HTMLElement) => {
+                  element.classList.remove(classes.invalid)
+                  element.classList.add(classes.valid)
+               }
+            }
+            if (!validate.fail) {
+               validate.fail = (event: DragEvent, element: HTMLElement) => {
+                  element.classList.remove(classes.valid)
+                  element.classList.add(classes.invalid)
+               }
+            }
+            if (!validate.exit) {
+               validate.exit = (event: DragEvent, element: HTMLElement) => {
+                  element.classList.remove(classes.valid, classes.invalid)
+               }
+            }
+         }
+
+         return {
+            DataPredicate: <T>(validate: (data: unknown) => data is T) => ({
+               soDrag: (data: T, hooks?: Partial<ValidationHooks>) => {
+                  applyDefaultClassHooks(validate)
+                  return draggable(data, { ...hooks, validate } as any)
+               },
+               soDrop: (onDrop: (data: T) => void, hooks?: Partial<ValidationHooks>) => {
+                  applyDefaultClassHooks(validate)
+                  return dropzone(onDrop as any, { ...hooks, validate } as any)
+               }
+            }),
+            DropPredicate: (validate: (element: HTMLElement) => boolean) => ({
+               soGive: (data: unknown, hooks?: Partial<ValidationHooks>) => {
+                  applyDefaultClassHooks(validate)
+                  return draggable(data, { ...hooks, validate } as any)
+               }
+            }),
+            classes: (newValidClass = 'valid', newInvalidClass = 'invalid') => {
+               classes.valid = newValidClass
+               classes.invalid = newInvalidClass
+            }
+         }
+      },
+
       dragend(event, element, dataCallback) {
          // Clear cache when drag ends
          validationCache = new WeakMap()
@@ -60,8 +121,16 @@ export const validationMiddleware: Middleware = (() => {
             // Call visual feedback hooks
             if (isValid) {
                validate.pass?.(event, element)
+               if (!validate.pass) {
+                  element.classList.remove(classes.invalid)
+                  element.classList.add(classes.valid)
+               }
             } else {
                validate.fail?.(event, element)
+               if (!validate.fail) {
+                  element.classList.remove(classes.valid)
+                  element.classList.add(classes.invalid)
+               }
             }
          }
 
@@ -99,92 +168,3 @@ export const validationMiddleware: Middleware = (() => {
       }
    }
 })()
-
-// Utility to add visual feedback classes to validate hooks
-export function classes(validClass = 'valid', invalidClass = 'invalid') {
-   return (validate: Function) => {
-      Object.assign(validate, {
-         pass: (event: DragEvent, element: HTMLElement) => {
-            element.classList.remove(invalidClass)
-            element.classList.add(validClass)
-         },
-         fail: (event: DragEvent, element: HTMLElement) => {
-            element.classList.remove(validClass)
-            element.classList.add(invalidClass)
-         },
-         exit: (event: DragEvent, element: HTMLElement) => {
-            element.classList.remove(validClass, invalidClass)
-         }
-      })
-   }
-}
-
-export function validated<T>(
-   validate: (data: unknown) => data is T,
-   onDrop: (data: T) => void
-): DropCallback {
-   const dropCallback = onDrop as DropCallback<ValidationHooks>
-   dropCallback.validate = validate
-   return dropCallback
-}
-// For dropzone validation (checks data)
-// export class DataPredicate<T> {
-//    type!: T
-
-//    constructor(public validate: (data: unknown) => data is T) {}
-
-//    soDrop(onDrop: (data: T) => void): DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T } {
-//       const dropCallback = onDrop as DropCallback<ValidationHooks>
-//       dropCallback.validate = this.validate
-//       return dropCallback as DropCallback<ValidationHooks> & { validate: (data: unknown) => data is T }
-//    }
-// }
-
-export function DataPredicate<T>(validate: (data: unknown) => data is T) {
-   const predicate = validate as typeof validate & {
-      soDrop: (onDrop: (data: T) => void) => DropCallback<ValidationHooks> & { validate: typeof validate }
-   }
-
-   predicate.soDrop = (onDrop: (data: T) => void) => {
-      const dropCallback = onDrop as DropCallback<ValidationHooks>
-      dropCallback.validate = validate
-      return dropCallback as DropCallback<ValidationHooks> & { validate: typeof validate }
-   }
-
-   return predicate
-}
-
-// // Usage
-// const isString = DataPredicate((data): data is string => typeof data === "string")
-// if (isString(someData)) { ... }  // Call as function
-// const drop = isString.soDrop(data => { ... })  // Use method
-
-// For draggable validation (checks elements)
-// export class DropPredicate {
-//    constructor(public validate: (element: HTMLElement) => boolean) {}
-
-//    soGive(getData: () => unknown): DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean } {
-//       const dataCallback = getData as DataCallback<ValidationHooks>
-//       dataCallback.validate = this.validate
-//       return dataCallback as DataCallback<ValidationHooks> & { validate: (element: HTMLElement) => boolean }
-//    }
-// }
-
-export function DropPredicate(validate: (element: HTMLElement) => boolean) {
-   const predicate = validate as typeof validate & {
-      soGive: (getData: () => unknown) => DataCallback<ValidationHooks> & { validate: typeof validate }
-   }
-
-   predicate.soGive = (getData: () => unknown) => {
-      const dataCallback = getData as DataCallback<ValidationHooks>
-      dataCallback.validate = validate
-      return dataCallback as DataCallback<ValidationHooks> & { validate: typeof validate }
-   }
-
-   return predicate
-}
-
-// Usage
-// const canDropOnPremium = DropPredicate(element => element.dataset.zone === "premium")
-// if (canDropOnPremium(someElement)) { ... }  // Call as function
-// const item = canDropOnPremium.soGive(() => "Premium Item")  // Use method

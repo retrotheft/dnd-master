@@ -1,8 +1,8 @@
 <script lang="ts">
-   import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
-   import { validationMiddleware, classes, type ValidationHooks, DataPredicate, DropPredicate } from '$lib/middleware/validate.js'
+   import { createDnd } from '$lib/core.js'
+   import { validationMiddleware } from '$lib/middleware/validate.js'
 
-   const dnd = createDnd().use<ValidationHooks>(validationMiddleware)
+   const dnd = createDnd().use(validationMiddleware)
 
    let dropCount = $state(0)
    let validDrops = $state(0)
@@ -10,57 +10,59 @@
    let lastDropped = $state<string>("")
 
    // Define what data is valid (dropzone-side validation)
-   const isString = DataPredicate((data): data is string =>
+   const isString = dnd.DataPredicate((data: unknown): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
-   const dropCallback = isString.soDrop(data => {
+   const dropCallback = isString.soDrop((data: string) => {
       lastDropped = data
    })
-   classes('valid', 'invalid')(dropCallback.validate)
 
    // Define what can drop on "premium" zones (draggable-side validation)
-   const canDropOnPremium = DropPredicate((element): element is HTMLElement =>
+   const canDropOnPremium = dnd.DropPredicate((element: HTMLElement) =>
       element.dataset.zone === "premium"
    )
 
-   const premiumItem = canDropOnPremium.soGive(() => "Premium Item")
-   premiumItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Premium item was dropped!")
-   }
-   premiumItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Premium item was rejected - wrong zone!")
-   }
+   const premiumItem = canDropOnPremium.soGive("Premium Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Premium item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Premium item was rejected - wrong zone!")
+      }
+   })
 
    // Regular item with no draggable-side validation
-   const regularItem: DataCallback<ValidationHooks> = () => "Regular Item"
-   regularItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Regular item was dropped!")
-   }
-   regularItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Regular item was rejected!")
-   }
+   const regularItem = dnd.draggable("Regular Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Regular item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Regular item was rejected!")
+      }
+   })
 
    // Forbidden item that will fail dropzone validation
-   const forbiddenItem: DataCallback<ValidationHooks> = () => "Forbidden Item"
-   forbiddenItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Forbidden item was dropped!")
-   }
-   forbiddenItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Forbidden item was rejected!")
-   }
+   const forbiddenItem = dnd.draggable("Forbidden Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Forbidden item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Forbidden item was rejected!")
+      }
+   })
 </script>
 
 <div class="container">
@@ -69,28 +71,28 @@
 
    <div class="items">
       <h4>Draggable Items:</h4>
-      <div class="draggable premium" {@attach dnd.draggable(premiumItem)}>
+      <div class="draggable premium" {@attach premiumItem}>
          💎 Premium Item (only drops on premium zones)
       </div>
 
-      <div class="draggable regular" {@attach dnd.draggable(regularItem)}>
+      <div class="draggable regular" {@attach regularItem}>
          📦 Regular Item (drops anywhere)
       </div>
 
-      <div class="draggable forbidden" {@attach dnd.draggable(forbiddenItem)}>
+      <div class="draggable forbidden" {@attach forbiddenItem}>
          🚫 Forbidden Item (rejected by dropzone)
       </div>
    </div>
 
    <div class="zones">
       <h4>Drop Zones:</h4>
-      <div class="dropzone premium" data-zone="premium" {@attach dnd.dropzone(dropCallback)}>
+      <div class="dropzone premium" data-zone="premium" {@attach dropCallback}>
          <strong>Premium Zone</strong><br>
          Only accepts: Premium items + valid strings<br>
          Last dropped: {lastDropped || "empty"}
       </div>
 
-      <div class="dropzone regular" data-zone="regular" {@attach dnd.dropzone(dropCallback)}>
+      <div class="dropzone regular" data-zone="regular" {@attach dropCallback}>
          <strong>Regular Zone</strong><br>
          Accepts: Regular items + valid strings (not Premium)<br>
          Last dropped: {lastDropped || "empty"}
@@ -110,6 +112,8 @@
       <p>Rejected drops: {rejectedDrops}</p>
    </div>
 </div>
+
+<!-- styles remain the same -->
 
 <style>
    .container {

@@ -1,65 +1,68 @@
 <script lang="ts">
-   import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
-   import { validationMiddleware, classes, type ValidationHooks, DataPredicate } from '$lib/middleware/validate.js'
+   import { createDnd } from '$lib/core.js'
+   import { validationMiddleware } from '$lib/middleware/validate.js'
 
-   const dnd = createDnd().use<ValidationHooks>(validationMiddleware)
+   const dnd = createDnd().use(validationMiddleware)
 
    let dropCount = $state(0)
    let validDrops = $state(0)
    let rejectedDrops = $state(0)
    let lastDropped = $state<string>("")
 
-   // Allowed item data callback
-   const allowedData: DataCallback<ValidationHooks> = () => "Allowed Item"
-   allowedData.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Allowed item was dropped!")
-   }
-   allowedData.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Allowed item drop was rejected")
-   }
+   // Create items using the new API - just pass data and hooks
+   const allowedItem = dnd.draggable("Allowed Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Allowed item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Allowed item drop was rejected")
+      }
+   })
 
-   // Rejected item data callback
-   const rejectedData: DataCallback<ValidationHooks> = () => "Rejected Item"
-   rejectedData.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Rejected item was dropped!")
-   }
-   rejectedData.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Rejected item drop was rejected")
-   }
+   const rejectedItem = dnd.draggable("Rejected Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Rejected item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Rejected item drop was rejected")
+      }
+   })
 
-   const isString = new DataPredicate((data): data is string =>
+   // Use DataPredicate extension for type-safe validation
+   const isString = dnd.DataPredicate((data: unknown): data is string =>
       typeof data === "string" && data !== "Rejected Item"
    )
 
-   const dropCallback = isString.soDrop(data => {
-      lastDropped = data  // data is correctly typed!
-   })
+   // Apply visual feedback classes to the validate function
+   // dnd.classes('valid', 'invalid')
 
-   // Add visual feedback classes to the validate function
-   classes('valid', 'invalid')(dropCallback.validate)
+   // Create dropzone with the predicate
+   const dropzone = isString.soDrop((data: string) => {
+      lastDropped = data  // data is correctly typed as string!
+   })
 </script>
 
 <div class="container">
    <h3>Core + Validation Test</h3>
    <p>Drag and drop with validation (green = valid, red = invalid)</p>
 
-   <div class="draggable allowed" {@attach dnd.draggable(allowedData)}>
+   <div class="draggable allowed" {@attach allowedItem}>
       Drag me (allowed) ✅
    </div>
 
-   <div class="draggable rejected" {@attach dnd.draggable(rejectedData)}>
+   <div class="draggable rejected" {@attach rejectedItem}>
       Drag me (will be rejected) ❌
    </div>
 
-   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
+   <div class="dropzone" {@attach dropzone}>
       Drop here: {lastDropped || "empty"}
    </div>
 
