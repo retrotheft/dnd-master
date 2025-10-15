@@ -102,19 +102,18 @@ export function validationMiddleware(instance: DndInstance) {
     dragover(event, element, dropCallback, dataCallback) {
       const validate = (dropCallback as any)?.validate;
       if (!validate) return;
-      console.log("data callback", dataCallback)
+      if (!dataCallback) return console.warn("No data callback passed to validate dragover handler!")
       const data = dataCallback();
-      console.log("Data", data)
       const cached = validationCache.get(element);
 
       if (!cached || cached.data !== data) {
         const itemValidate = (dataCallback as any).validate;
         let isValid = true;
 
-        if (itemValidate && !itemValidate(data)) isValid = false;
+        if (itemValidate && !itemValidate(data, element)) isValid = false;
 
         // if (itemValidate && !itemValidate(element)) isValid = false;
-        if (isValid && !validate(data)) isValid = false;
+        if (isValid && !validate(data, element)) isValid = false;
 
         validationCache.set(element, { data, isValid });
 
@@ -177,7 +176,6 @@ export function validationMiddleware(instance: DndInstance) {
         onDrop: (data: T) => void,
         hooks?: Partial<BaseHooks & ValidationHooks>
       ) => {
-         console.log(onDrop, hooks)
         applyDefaultClassHooks(validate);
         return dropzone(onDrop as any, { ...hooks, validate } as any);
       },
@@ -185,10 +183,16 @@ export function validationMiddleware(instance: DndInstance) {
 
     assertZone: (validate: (element: HTMLElement) => boolean) => ({
       soGive: (data: unknown, hooks?: Partial<BaseHooks & ValidationHooks>) => {
-        applyDefaultClassHooks(validate);
-        return draggable(data, { ...hooks, validate } as any);
+        const zoneValidator = (dataOrEl: unknown, el: HTMLElement) => {
+          // Force correct argument type
+          return validate(el);
+        };
+
+        applyDefaultClassHooks(zoneValidator as any);
+        return draggable(data, { ...hooks, validate: zoneValidator } as any);
       },
     }),
+
 
     classes(newValid = "valid", newInvalid = "invalid") {
       classes.valid = newValid;

@@ -15,7 +15,7 @@
    <CoreValidation />
    <CoreGhost />
    <!-- <CoreBoth /> -->
-   <!-- <TwoWayValidation /> -->
+   <TwoWayValidation />
    <!-- <DynamicGhost /> -->
 </main>
 

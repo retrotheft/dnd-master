@@ -3,7 +3,7 @@
    import { validationMiddleware } from '$lib/middleware/validate.js'
 
    const dnd = createDnd().use(validationMiddleware)
-   console.log(dnd.assertData)
+
    let dropCount = $state(0)
    let validDrops = $state(0)
    let rejectedDrops = $state(0)
