@@ -19,7 +19,7 @@
 
    const dropzone = dnd.dropzone(data => {
       console.log("Data", data)
-      lastDropped = data
+      if (typeof data === "string") lastDropped = data
       console.log("Dropzone received item")
    })
 </script>

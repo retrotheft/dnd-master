@@ -90,6 +90,7 @@
    `
 
    const regularItem = dnd.draggable("Regular Item", {
+      dragstart: () => dnd.setGhost(regularGhost),
       drop: () => {
          dropCount++
          validDrops++
@@ -115,6 +116,7 @@
    `
 
    const forbiddenItem = dnd.draggable("Forbidden Item", {
+      dragstart: () => dnd.setGhost(forbiddenGhost),
       drop: () => {
          dropCount++
          validDrops++
