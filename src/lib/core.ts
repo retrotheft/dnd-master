@@ -1,239 +1,385 @@
-import { type Attachment } from "svelte/attachments"
+/* ============================================================
+   Core Types
+============================================================ */
+
+export type ExtensionRecord = Record<string, any>;
+
+export type HookFn = (event: DragEvent, element: HTMLElement) => void;
 
 export type BaseHooks = {
-   dragstart?: (event: DragEvent, element: HTMLElement) => void,
-   dragend?: (event: DragEvent, element: HTMLElement) => void,
-   dragenter?: (event: DragEvent, element: HTMLElement) => void,
-   dragover?: (event: DragEvent, element: HTMLElement) => void,
-   dragleave?: (event: DragEvent, element: HTMLElement) => void,
-   drop?: (event: DragEvent, element: HTMLElement) => void
-   stop?: (event: DragEvent, element: HTMLElement) => void
+  dragstart?: HookFn;
+  dragend?: HookFn;
+  dragenter?: HookFn;
+  dragover?: HookFn;
+  dragleave?: HookFn;
+  drop?: HookFn;
+  stop?: HookFn;
+};
+
+export type DataCallback = (() => unknown) & BaseHooks;
+
+export type DropCallback = ((data: unknown) => void) & BaseHooks;
+
+export type Middleware = Partial<{
+  dragstart: (event: DragEvent, el: HTMLElement, dataCallback: DataCallback) => void;
+  dragend: (event: DragEvent, el: HTMLElement, dataCallback: DataCallback) => void;
+  dragenter: (
+    event: DragEvent,
+    el: HTMLElement,
+    dropCallback?: DropCallback,
+    dataCallback?: DataCallback
+  ) => void;
+  dragover: (
+    event: DragEvent,
+    el: HTMLElement,
+    dropCallback?: DropCallback,
+    dataCallback?: DataCallback
+  ) => void;
+  dragleave: (
+    event: DragEvent,
+    el: HTMLElement,
+    dropCallback?: DropCallback,
+    dataCallback?: DataCallback
+  ) => void;
+  drop: (
+    event: DragEvent,
+    el: HTMLElement,
+    dropCallback?: DropCallback,
+    dataCallback?: DataCallback
+  ) => boolean | void;
+}>;
+
+export type Attachment<T> = (el: T) => void;
+
+export type DndInstance<Ext extends ExtensionRecord = {}> = {
+  draggable: (
+    data: unknown,
+    hooks?: Partial<BaseHooks>
+  ) => Attachment<HTMLElement>;
+  dropzone: (
+    dropCallback?: (data: unknown) => void,
+    hooks?: Partial<BaseHooks>
+  ) => Attachment<HTMLElement>;
+  use: <NewExt extends ExtensionRecord>(
+    middlewareFactory: (
+      instance: DndInstance<Ext>
+    ) => { middleware: Middleware; extensions?: NewExt }
+  ) => DndInstance<Ext & NewExt>;
+} & Ext;
+
+/* ============================================================
+   createDnd Implementation (Refactored)
+============================================================ */
+
+export function createDnd<Ext extends ExtensionRecord = {}>(
+  initialExtensions?: Ext
+): DndInstance<Ext> {
+  let dataCallback: DataCallback = Object.assign(() => undefined, {} as BaseHooks);
+  const middlewares: Middleware[] = [];
+  const extensions: Ext = (initialExtensions || {}) as Ext;
+
+  // placeholder that we’ll assign below
+  let instance: DndInstance<Ext>;
+
+  function draggable(
+    data: unknown,
+    hooks?: Partial<BaseHooks>
+  ): Attachment<HTMLElement> {
+    return (element) => {
+      element.draggable = true;
+      const _dataCallback: DataCallback = Object.assign(() => data, hooks || {}) as DataCallback;
+      const handleDragStart = (e: DragEvent) => dragStart(e, element, _dataCallback);
+      const handleDragEnd = (e: DragEvent) => dragEnd(e, element, _dataCallback);
+      element.addEventListener("dragstart", handleDragStart);
+      element.addEventListener("dragend", handleDragEnd);
+    };
+  }
+
+  function dropzone(
+    _dropCallback?: (data: unknown) => void,
+    hooks?: Partial<BaseHooks>
+  ): Attachment<HTMLElement> {
+    return (element) => {
+      const normalized = _dropCallback
+        ? (Object.assign(_dropCallback, hooks || {}) as DropCallback)
+        : undefined;
+
+      element.addEventListener("dragenter", (e) => dragEnter(e, element, normalized));
+      element.addEventListener("dragover", (e) => dragOver(e, element, normalized));
+      element.addEventListener("dragleave", (e) => dragLeave(e, element, normalized));
+      element.addEventListener("drop", (e) => drop(e, element, normalized));
+    };
+  }
+
+  /* ========== Drag/Drop Event Handlers ========== */
+
+  function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
+    dataCallback = _dataCallback;
+    _dataCallback.dragstart?.(event, element);
+    console.log("dragstart data", _dataCallback)
+    console.log(middlewares)
+    for (const m of middlewares) m.dragstart?.(event, element, _dataCallback);
+  }
+
+  function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
+    event.preventDefault();
+    _dataCallback.dragend?.(event, element);
+    for (const m of middlewares) m.dragend?.(event, element, _dataCallback);
+    // dataCallback = () => {};
+  }
+
+  function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+    event.preventDefault();
+    const data = dataCallback();
+    console.log("Drag Enter data callback", dataCallback)
+    dropCallback?.dragenter?.(event, element, data);
+    dataCallback.dragenter?.(event, element);
+    for (const m of middlewares) m.dragenter?.(event, element, dropCallback, dataCallback);
+  }
+
+  function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+    event.preventDefault();
+    const data = dataCallback();
+    console.log("Data", data)
+    dropCallback?.dragover?.(event, element, data);
+    dataCallback.dragover?.(event, element);
+    console.log("Core Dragover Data callback", dataCallback)
+    for (const m of middlewares) m.dragover?.(event, element, dropCallback, dataCallback);
+  }
+
+  function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+    const data = dataCallback();
+    dropCallback?.dragleave?.(event, element, data);
+    dataCallback.dragleave?.(event, element);
+    for (const m of middlewares) m.dragleave?.(event, element, dropCallback, dataCallback);
+  }
+
+  function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+    event.stopPropagation();
+    const data = dataCallback();
+    dropCallback?.drop?.(event, element, data);
+
+    for (const m of middlewares) {
+      const result = m.drop?.(event, element, dropCallback, dataCallback);
+      if (result === false) {
+        dataCallback.stop?.(event, element);
+        return;
+      }
+    }
+
+    dataCallback.drop?.(event, element);
+    dropCallback?.(data);
+  }
+
+  function use<NewExt extends ExtensionRecord>(
+    middlewareFactory: (
+      instance: DndInstance<Ext>
+    ) => { middleware: Middleware; extensions?: NewExt }
+  ): DndInstance<Ext & NewExt> {
+    const { middleware, extensions: newExtensions } = middlewareFactory(instance);
+
+    if (middleware) middlewares.push(middleware);
+    if (newExtensions) {
+      Object.assign(extensions, newExtensions);
+      Object.assign(instance, newExtensions);
+    }
+
+    return instance as DndInstance<Ext & NewExt>;
+  }
+
+  instance = {
+    draggable,
+    dropzone,
+    use,
+    ...extensions,
+  } as DndInstance<Ext>;
+
+  return instance;
 }
 
-export type DropzoneBaseHooks = {
-   dragenter?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
-   dragover?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
-   dragleave?: (event: DragEvent, element: HTMLElement, data: unknown) => void,
-   drop?: (event: DragEvent, element: HTMLElement, data: unknown) => void
+
+// // change function signature and make extensions mutable
+// export function createDnd<Ext extends ExtensionRecord = {}>(
+//   initialExtensions?: Ext
+// ): DndInstance<Ext> {
+//   // shared state
+//   let dataCallback: DataCallback | (() => void) & BaseHooks = () => "Hello there";
+
+//   // make extensions mutable and default to empty object
+//   let extensions = (initialExtensions || ({} as Ext));
+
+//   // middlewares that belong to THIS instance/closure
+//   const middlewares: Middleware[] = [];
+
+
+//   /* ========== Middleware Registration ========== */
+//   function use<NewExt extends ExtensionRecord>(
+//     middlewareFactory: (
+//       instance: DndInstance<Ext>
+//     ) => { middleware: Middleware; extensions?: NewExt }
+//   ): DndInstance<Ext & NewExt> {
+//     // Build the current instance object that middleware factories expect
+//     const currentInstance = {
+//       draggable,
+//       dropzone,
+//       use,
+//       ...extensions,
+//     } as DndInstance<Ext & NewExt>;
+
+//     // Call the factory with the current instance to get middleware + extensions
+//     const { middleware, extensions: newExtensions } = middlewareFactory(currentInstance);
+
+//     // Register middleware into the current instance's middleware list
+//     if (middleware) middlewares.push(middleware);
+
+//     // Merge new extensions into the existing extensions object (mutate in-place)
+//     if (newExtensions) {
+//       Object.assign(extensions, newExtensions);
+//     }
+
+//     // IMPORTANT: return the same instance (not createDnd again)
+//     return currentInstance as DndInstance<Ext & NewExt>;
+//   }
+
+
+//   /* ========== Factories ========== */
+
+//   function draggable(
+//     data: unknown,
+//     hooks?: Partial<BaseHooks>
+//   ): Attachment<HTMLElement> {
+//     return (element: HTMLElement) => {
+//       element.draggable = true;
+//       element.style.cursor = "grab";
+//       console.log(data, hooks)
+//       const _dataCallback: DataCallback = Object.assign(
+//         () => data,
+//         hooks || {}
+//       ) as DataCallback;
+
+//       const handleDragStart = (e: DragEvent) => dragStart(e, element, _dataCallback);
+//       const handleDragEnd = (e: DragEvent) => dragEnd(e, element, _dataCallback);
+
+//       element.addEventListener("dragstart", handleDragStart);
+//       element.addEventListener("dragend", handleDragEnd);
+//     };
+//   }
+
+//   function dropzone(
+//     _dropCallback?: (data: unknown) => void,
+//     hooks?: Partial<BaseHooks>
+//   ): Attachment<HTMLElement> {
+//     return (element: HTMLElement) => {
+//       let normalizedCallback: DropCallback | undefined;
+
+//       if (_dropCallback) {
+//         normalizedCallback = Object.assign(
+//           _dropCallback,
+//           hooks || {}
+//         ) as DropCallback;
+//       }
+
+//       const handleDragEnter = (e: DragEvent) => dragEnter(e, element, normalizedCallback);
+//       const handleDragOver = (e: DragEvent) => dragOver(e, element, normalizedCallback);
+//       const handleDragLeave = (e: DragEvent) => dragLeave(e, element, normalizedCallback);
+//       const handleDrop = (e: DragEvent) => drop(e, element, normalizedCallback);
+
+//       element.addEventListener("dragenter", handleDragEnter);
+//       element.addEventListener("dragover", handleDragOver);
+//       element.addEventListener("dragleave", handleDragLeave);
+//       element.addEventListener("drop", handleDrop);
+//     };
+//   }
+
+//   /* ========== Drag/Drop Event Handlers ========== */
+
+//   function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
+//     dataCallback = _dataCallback;
+//     _dataCallback.dragstart?.(event, element);
+//     console.log("dragstart data", _dataCallback)
+//     console.log(middlewares)
+//     for (const m of middlewares) m.dragstart?.(event, element, _dataCallback);
+//   }
+
+//   function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback) {
+//     event.preventDefault();
+//     _dataCallback.dragend?.(event, element);
+//     for (const m of middlewares) m.dragend?.(event, element, _dataCallback);
+//     // dataCallback = () => {};
+//   }
+
+//   function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+//     event.preventDefault();
+//     const data = dataCallback();
+//     console.log("Drag Enter data callback", dataCallback)
+//     dropCallback?.dragenter?.(event, element, data);
+//     dataCallback.dragenter?.(event, element);
+//     for (const m of middlewares) m.dragenter?.(event, element, dropCallback, dataCallback);
+//   }
+
+//   function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+//     event.preventDefault();
+//     const data = dataCallback();
+//     console.log("Data", data)
+//     dropCallback?.dragover?.(event, element, data);
+//     dataCallback.dragover?.(event, element);
+//     console.log("Core Dragover Data callback", dataCallback)
+//     for (const m of middlewares) m.dragover?.(event, element, dropCallback, dataCallback);
+//   }
+
+//   function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+//     const data = dataCallback();
+//     dropCallback?.dragleave?.(event, element, data);
+//     dataCallback.dragleave?.(event, element);
+//     for (const m of middlewares) m.dragleave?.(event, element, dropCallback, dataCallback);
+//   }
+
+//   function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
+//     event.stopPropagation();
+//     const data = dataCallback();
+//     dropCallback?.drop?.(event, element, data);
+
+//     for (const m of middlewares) {
+//       const result = m.drop?.(event, element, dropCallback, dataCallback);
+//       if (result === false) {
+//         dataCallback.stop?.(event, element);
+//         return;
+//       }
+//     }
+
+//     dataCallback.drop?.(event, element);
+//     dropCallback?.(data);
+//   }
+
+//   /* ========== Return Instance ========== */
+
+//   return {
+//     draggable,
+//     dropzone,
+//     use,
+//     ...extensions,
+//   } as DndInstance<Ext>;
+// }
+
+/* ============================================================
+   Middleware Helper
+============================================================ */
+
+export function defineMiddleware<
+  Ext extends ExtensionRecord = {},
+  NewExt extends ExtensionRecord = {}
+>(
+  factory: (
+    instance: DndInstance<Ext>
+  ) => { middleware: Middleware; extensions?: NewExt }
+) {
+  return factory;
 }
 
-export type DataCallback<TMiddlewareHooks = {}> = (() => unknown) & BaseHooks & TMiddlewareHooks
+/* ============================================================
+   Singleton Export (Backward Compatible)
+============================================================ */
 
-export type DropCallback<TMiddlewareHooks = {}> =
-   ((data: unknown) => void) & DropzoneBaseHooks & TMiddlewareHooks
-
-export type Draggable<TMiddlewareHooks = {}> = (
-   data: unknown,
-   hooks?: Partial<BaseHooks & TMiddlewareHooks>
-) => Attachment<HTMLElement>
-
-export type Dropzone<TMiddlewareHooks = {}> = (
-   dropCallback?: (data: unknown) => void,
-   hooks?: Partial<DropzoneBaseHooks & TMiddlewareHooks>
-) => Attachment<HTMLElement>
-
-export type Middleware<THooks = {}, TExtensions = {}> = {
-   extensions?: (draggable: Draggable<{}>, dropzone: Dropzone<{}>) => TExtensions,
-   dragstart?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void | false,
-   dragend?: (event: DragEvent, element: HTMLElement, dataCallback: DataCallback) => void | false,
-   dragenter?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
-   dragover?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
-   dragleave?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | false,
-   drop?: (event: DragEvent, element: HTMLElement, dropCallback: DropCallback | undefined, dataCallback: DataCallback) => void | boolean
-   __hooks?: THooks  // Phantom type parameter for type inference
-}
-
-export type DndInstance<TMiddlewareHooks = {}, TExtensions = {}> = {
-   draggable: Draggable<TMiddlewareHooks>,
-   dropzone: Dropzone<TMiddlewareHooks>,
-   use: <TNewHooks, TNewExtensions = {}>(
-      middleware: Middleware<TNewHooks, TNewExtensions>
-   ) => DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions,
-} & TExtensions
-
-let count = 0
-// Factory function to create DND instances
-export function createDnd<TMiddlewareHooks = {}, TExtensions = {}>(): DndInstance<TMiddlewareHooks, TExtensions> {
-   let dataCallback: DataCallback | (() => void) & BaseHooks = () => { }
-   let middlewares: Middleware<any, any>[] = []
-   let allExtensions: any = {}
-
-   function use<TNewHooks, TNewExtensions = {}>(
-         middleware: Middleware<TNewHooks, TNewExtensions>
-      ): DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions {
-         middlewares.push(middleware)
-
-         const instance = {
-            draggable,
-            dropzone,
-            use,
-         } as DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions>
-
-         // Get extensions from this middleware
-         const newExtensions = middleware.extensions?.(draggable as any, dropzone as any) || {} as TNewExtensions
-
-         // Accumulate extensions
-         allExtensions = {
-            ...allExtensions,
-            ...newExtensions
-         }
-
-         return {
-            ...instance,
-            ...allExtensions // Return ALL accumulated extensions
-         } as DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions
-      }
-
-   /* ===================== Factories ===================== */
-
-   function draggable(
-      data: unknown,
-      hooks?: Partial<BaseHooks & TMiddlewareHooks>
-   ): Attachment<HTMLElement> {
-      return (element: HTMLElement) => {
-         element.draggable = true
-         element.style.cursor = "grab"
-
-         // Create the data callback internally
-         const _dataCallback: DataCallback<TMiddlewareHooks> = Object.assign(
-            () => data,
-            hooks || {}
-         ) as DataCallback<TMiddlewareHooks>
-
-         const handleDragStart = (e: DragEvent) => dragStart(e, element, _dataCallback)
-         const handleDragEnd = (e: DragEvent) => dragEnd(e, element, _dataCallback)
-
-         element.addEventListener("dragstart", handleDragStart)
-         element.addEventListener("dragend", handleDragEnd)
-      }
-   }
-
-   function dropzone(
-      _dropCallback?: (data: unknown) => void,
-      hooks?: Partial<DropzoneBaseHooks & TMiddlewareHooks>
-   ): Attachment<HTMLElement> {
-      return (element: HTMLElement) => {
-         // Create the drop callback internally
-         let normalizedCallback: DropCallback<TMiddlewareHooks> | undefined
-
-         if (_dropCallback) {
-            normalizedCallback = Object.assign(
-               _dropCallback,
-               hooks || {}
-            ) as DropCallback<TMiddlewareHooks>
-         }
-
-         const handleDragEnter = (e: DragEvent) => dragEnter(e, element, normalizedCallback)
-         const handleDragOver = (e: DragEvent) => dragOver(e, element, normalizedCallback)
-         const handleDragLeave = (e: DragEvent) => dragLeave(e, element, normalizedCallback)
-         const handleDrop = (e: DragEvent) => drop(e, element, normalizedCallback)
-
-         element.addEventListener("dragenter", handleDragEnter)
-         element.addEventListener("dragover", handleDragOver)
-         element.addEventListener("dragleave", handleDragLeave)
-         element.addEventListener("drop", handleDrop)
-      }
-   }
-
-   /* ===================== Drag Events ===================== */
-
-   function dragStart(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
-      dataCallback = _dataCallback
-
-      _dataCallback.dragstart?.(event, element)
-
-      for (const middleware of middlewares) {
-         middleware.dragstart?.(event, element, _dataCallback)
-      }
-   }
-
-   function dragEnd(event: DragEvent, element: HTMLElement, _dataCallback: DataCallback<TMiddlewareHooks>) {
-      event.preventDefault()
-
-      _dataCallback.dragend?.(event, element)
-
-      for (const middleware of middlewares) {
-         middleware.dragend?.(event, element, _dataCallback)
-      }
-
-      dataCallback = () => { }
-   }
-
-   /* ===================== Drop Events ===================== */
-
-   function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
-      event.preventDefault()
-      const data = dataCallback()
-
-      dropCallback?.dragenter?.(event, element, data)
-      dataCallback.dragenter?.(event, element)
-
-      for (const middleware of middlewares) {
-         middleware.dragenter?.(event, element, dropCallback, dataCallback)
-      }
-   }
-
-   function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
-      event.preventDefault()
-      const data = dataCallback()
-
-      dropCallback?.dragover?.(event, element, data)
-      dataCallback.dragover?.(event, element)
-
-      for (const middleware of middlewares) {
-         middleware.dragover?.(event, element, dropCallback, dataCallback)
-      }
-   }
-
-   function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
-      const data = dataCallback()
-
-      dropCallback?.dragleave?.(event, element, data)
-      dataCallback.dragleave?.(event, element)
-
-      for (const middleware of middlewares) {
-         middleware.dragleave?.(event, element, dropCallback, dataCallback)
-      }
-   }
-
-   function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback<TMiddlewareHooks>) {
-      event.stopPropagation()
-      const data = dataCallback()
-
-      dropCallback?.drop?.(event, element, data)
-
-      for (const middleware of middlewares) {
-         const result = middleware.drop?.(event, element, dropCallback, dataCallback)
-         if (result === false) {
-            dataCallback.stop?.(event, element)
-            return
-         }
-      }
-
-      dataCallback.drop?.(event, element)
-      // Call the main drop handler
-      dropCallback?.(data)
-   }
-
-   return {
-      draggable,
-      dropzone,
-      use
-   } as DndInstance<TMiddlewareHooks, TExtensions>
-}
-
-// Helper function to define middlewares with type inference
-export function defineMiddleware<THooks, TExtensions = {}>(
-   middleware: Middleware<THooks, TExtensions>
-): Middleware<THooks, TExtensions> {
-   return middleware
-}
-
-// Default singleton instance for backward compatibility
-const dnd = createDnd()
-
-// Named exports for the singleton
-export const { draggable, dropzone, use } = dnd
-
-// Default export is the singleton
-export default dnd
+const dnd = createDnd();
+export const { draggable, dropzone, use } = dnd;
+export default dnd;

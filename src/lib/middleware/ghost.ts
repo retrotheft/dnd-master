@@ -1,20 +1,6 @@
-import type { Middleware, Draggable, Dropzone } from '../core.js'
-import type { Attachment } from 'svelte/attachments'
+import type { DndInstance } from '../core.js'
 
-export type GhostHooks = {
-   // No hooks needed at the base level
-}
-
-export type GhostExtensions = {
-   ghost: (
-      data: unknown,
-      ghost: HTMLElement,
-      validGhost?: HTMLElement,
-      invalidGhost?: HTMLElement
-   ) => Attachment<HTMLElement>
-}
-
-export function createGhostMiddleware(): Middleware<GhostHooks, GhostExtensions> {
+export function ghostMiddleware(instance: DndInstance) {
    let currentGhost: HTMLElement | null = null
    let isDragging = false
    const emptyImg = new Image()
@@ -54,96 +40,93 @@ export function createGhostMiddleware(): Middleware<GhostHooks, GhostExtensions>
    }
 
    return {
-      extensions(draggable: Draggable<any>, dropzone: Dropzone<any>) {
-         return {
-            ghost: (
-               data: unknown,
-               ghost: HTMLElement,
-               validGhost?: HTMLElement,
-               invalidGhost?: HTMLElement
-            ) => {
-               const hooks: any = {
-                  __ghost: ghost,
-                  __validGhost: validGhost,
-                  __invalidGhost: invalidGhost
-               }
+      middleware: {
+         dragstart(event, element, dataCallback) {
+            // Hide default drag image IMMEDIATELY
+            if (event.dataTransfer) {
+               event.dataTransfer.setDragImage(emptyImg, 0, 0)
+            }
 
-               // If validation ghosts provided, add validation hooks
-               if (validGhost || invalidGhost) {
-                  hooks.validate = () => true // Placeholder, will be overridden
+            isDragging = true
 
-                  if (validGhost) {
-                     hooks.validate.pass = (event: DragEvent, element: HTMLElement) => {
-                        showGhost(validGhost, event)
-                     }
-                  }
+            // Get the ghost from dataCallback
+            const ghost = (dataCallback as any).__ghost
+            if (ghost) {
+               showGhost(ghost, event)
+            }
 
-                  if (invalidGhost) {
-                     hooks.validate.fail = (event: DragEvent, element: HTMLElement) => {
-                        showGhost(invalidGhost, event)
-                     }
-                  }
-               }
+            // Add global drag listener to the dragged element itself
+            element.addEventListener('drag', handleGlobalDrag)
+         },
 
-               return draggable(data, hooks)
+         dragover(event, element, dropCallback, dataCallback) {
+            // If no validation ghosts, just update position
+            const validGhost = (dataCallback as any).__validGhost
+            const invalidGhost = (dataCallback as any).__invalidGhost
+
+            if (!validGhost && !invalidGhost) {
+               updateGhostPosition(event)
+            }
+            // Otherwise validation middleware will handle ghost swapping via hooks
+         },
+
+         dragleave(event, element, dropCallback, dataCallback) {
+            // Switch back to default ghost when leaving a dropzone
+            const defaultGhost = (dataCallback as any).__ghost
+            const validGhost = (dataCallback as any).__validGhost
+            const invalidGhost = (dataCallback as any).__invalidGhost
+
+            if ((validGhost || invalidGhost) && defaultGhost) {
+               showGhost(defaultGhost, event)
+            }
+         },
+
+         dragend(event, element, dataCallback) {
+            isDragging = false
+
+            // Remove global drag listener
+            element.removeEventListener('drag', handleGlobalDrag)
+
+            // Clean up ghost
+            if (currentGhost && document.body.contains(currentGhost)) {
+               document.body.removeChild(currentGhost)
+               currentGhost = null
             }
          }
       },
 
-      dragstart(event, element, dataCallback) {
-         // Hide default drag image IMMEDIATELY
-         if (event.dataTransfer) {
-            event.dataTransfer.setDragImage(emptyImg, 0, 0)
-         }
+      extensions: {
+         ghost: (
+            data: unknown,
+            ghost: HTMLElement,
+            validGhost?: HTMLElement,
+            invalidGhost?: HTMLElement
+         ) => {
+            const hooks: any = {
+               __ghost: ghost,
+               __validGhost: validGhost,
+               __invalidGhost: invalidGhost
+            }
 
-         isDragging = true
+            // If validation ghosts provided, add validation hooks
+            if (validGhost || invalidGhost) {
+               hooks.validate = () => true // Placeholder, will be overridden
 
-         // Get the ghost from dataCallback
-         const ghost = (dataCallback as any).__ghost
-         if (ghost) {
-            showGhost(ghost, event)
-         }
+               if (validGhost) {
+                  hooks.validate.pass = (event: DragEvent, element: HTMLElement) => {
+                     showGhost(validGhost, event)
+                  }
+               }
 
-         // Add global drag listener to the dragged element itself
-         element.addEventListener('drag', handleGlobalDrag)
-      },
+               if (invalidGhost) {
+                  hooks.validate.fail = (event: DragEvent, element: HTMLElement) => {
+                     showGhost(invalidGhost, event)
+                  }
+               }
+            }
 
-      dragover(event, element, dropCallback, dataCallback) {
-         // If no validation ghosts, just update position
-         const validGhost = (dataCallback as any).__validGhost
-         const invalidGhost = (dataCallback as any).__invalidGhost
-
-         if (!validGhost && !invalidGhost) {
-            updateGhostPosition(event)
-         }
-         // Otherwise validation middleware will handle ghost swapping via hooks
-      },
-
-      dragleave(event, element, dropCallback, dataCallback) {
-         // Switch back to default ghost when leaving a dropzone
-         const defaultGhost = (dataCallback as any).__ghost
-         const validGhost = (dataCallback as any).__validGhost
-         const invalidGhost = (dataCallback as any).__invalidGhost
-
-         if ((validGhost || invalidGhost) && defaultGhost) {
-            showGhost(defaultGhost, event)
-         }
-      },
-
-      dragend(event, element, dataCallback) {
-         isDragging = false
-
-         // Remove global drag listener
-         element.removeEventListener('drag', handleGlobalDrag)
-
-         // Clean up ghost
-         if (currentGhost && document.body.contains(currentGhost)) {
-            document.body.removeChild(currentGhost)
-            currentGhost = null
+            return instance.draggable(data, hooks)
          }
       }
    }
 }
-
-// Backward compatibility export
-export const ghostMiddleware = createGhostMiddleware()

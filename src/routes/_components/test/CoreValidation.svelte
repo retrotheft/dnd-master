@@ -3,7 +3,7 @@
    import { validationMiddleware } from '$lib/middleware/validate.js'
 
    const dnd = createDnd().use(validationMiddleware)
-
+   console.log(dnd.assertData)
    let dropCount = $state(0)
    let validDrops = $state(0)
    let rejectedDrops = $state(0)
@@ -36,8 +36,11 @@
       }
    })
 
-   const isString = dnd.assertData((data: unknown): data is string =>
-      typeof data === "string" && data !== "Rejected Item"
+   const isString = dnd.assertData((data: unknown): data is string => {
+      console.log(data)
+      return typeof data === "string" && data !== "Rejected Item"
+
+   }
    )
 
    // Apply visual feedback classes to the validate function

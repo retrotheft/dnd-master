@@ -15,7 +15,8 @@
    })
 
    const dropzone = dnd.dropzone(data => {
-      lastDropped = "Basic Item"
+      console.log("Data", data)
+      lastDropped = data
       console.log("Dropzone received item")
    })
 </script>
