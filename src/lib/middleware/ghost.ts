@@ -45,7 +45,7 @@ export function ghostMiddleware(instance: DndInstance) {
 
   return {
     middleware: {
-      dragstart(event, element) {
+      dragstart(event: DragEvent, element: HTMLElement) {
         if (event.dataTransfer) {
           event.dataTransfer.setDragImage(emptyImg, 0, 0)
         }
@@ -55,11 +55,11 @@ export function ghostMiddleware(instance: DndInstance) {
         element.addEventListener('drag', handleGlobalDrag)
       },
 
-      dragover(event) {
+      dragover(event: DragEvent) {
         handleGlobalDrag(event)
       },
 
-      dragend(event, element) {
+      dragend(_e: DragEvent, element: HTMLElement) {
         isDragging = false
         element.removeEventListener('drag', handleGlobalDrag)
 

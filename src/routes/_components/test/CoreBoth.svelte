@@ -1,7 +1,7 @@
 <script lang="ts">
    import { createDnd } from '$lib/core.js'
    import { ghostMiddleware } from '$lib/middleware/ghost.js'
-   import { validationMiddleware, classes, DataPredicate } from '$lib/middleware/validate.js'
+   import { validationMiddleware } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
       .use(ghostMiddleware)
@@ -14,6 +14,7 @@
 
    // Create ghost elements
    const allowedGhost = document.createElement('div')
+   allowedGhost.textContent = "✨ Premium Item"
    allowedGhost.style.cssText = `
       background: #4caf50;
       color: white;
@@ -23,6 +24,7 @@
    `
 
    const rejectedGhost = document.createElement('div')
+   rejectedGhost.textContent = "🚫 Forbidden Item"
    rejectedGhost.style.cssText = `
       background: #f44336;
       color: white;
@@ -31,63 +33,54 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
    `
 
-   // Allowed item data callback
-   const allowedData = () => "Premium Item"
-   allowedData.ghost = allowedGhost
-   allowedData.dragstart = (event: DragEvent, element: HTMLElement) => {
-      allowedGhost.textContent = "✨ Premium Item"
-   }
-   allowedData.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Premium item was dropped!")
-   }
-   allowedData.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Premium item drop was rejected")
-   }
+   const allowedData = dnd.draggable("Premium Item", {
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Premium item was dropped!")
+      },
+      stop:(event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Premium item drop was rejected")
+      }
+   })
 
    // Rejected item data callback
-   const rejectedData = () => "Forbidden Item"
-   rejectedData.ghost = rejectedGhost
-   rejectedData.dragstart = (event: DragEvent, element: HTMLElement) => {
-      rejectedGhost.textContent = "🚫 Forbidden Item"
-   }
-   rejectedData.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Forbidden item was dropped!")
-   }
-   rejectedData.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Forbidden item drop was rejected")
-   }
+   const rejectedData = dnd.draggable("Forbidden Item", {
+      dragstart: (event: DragEvent, element: HTMLElement) => dnd.setGhost(rejectedGhost),
+      drop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         validDrops++
+         console.log("Forbidden item was dropped!")
+      },
+      stop: (event: DragEvent, element: HTMLElement) => {
+         dropCount++
+         rejectedDrops++
+         console.log("Forbidden item drop was rejected")
+      }
+   })
 
-   const isString = new DataPredicate((data): data is string =>
+   const isString = dnd.assertData((data): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
-   const dropCallback = isString.soDrop(data => lastDropped = data)
-
-   // Add visual feedback classes
-   classes('valid', 'invalid')(dropCallback.validate)
+   const dropzone = isString.soDrop(data => lastDropped = data)
 </script>
 
 <div class="container">
    <h3>Core + Ghost + Validation Test</h3>
    <p>Full-featured drag and drop with custom ghosts and validation</p>
 
-   <div class="draggable allowed" {@attach dnd.draggable(allowedData)}>
+   <div class="draggable allowed" {@attach allowedData}>
       Drag me (premium) ✨
    </div>
 
-   <div class="draggable rejected" {@attach dnd.draggable(rejectedData)}>
+   <div class="draggable rejected" {@attach rejected}>
       Drag me (forbidden) 🚫
    </div>
 
-   <div class="dropzone" {@attach dnd.dropzone(dropCallback)}>
+   <div class="dropzone" {@attach dropzone}>
       Drop here: {lastDropped || "empty"}
    </div>
 

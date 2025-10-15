@@ -66,19 +66,19 @@ export function validationMiddleware(instance: DndInstance) {
 
    const applyDefaultClassHooks = (validate: any) => {
       if (!validate.pass) {
-         validate.pass = (_e, el) => {
+         validate.pass = (_e: DragEvent, el: HTMLElement) => {
             el.classList.remove(classes.invalid);
             el.classList.add(classes.valid);
          };
       }
       if (!validate.fail) {
-         validate.fail = (_e, el) => {
+         validate.fail = (_e: DragEvent, el: HTMLElement) => {
             el.classList.remove(classes.valid);
             el.classList.add(classes.invalid);
          };
       }
       if (!validate.exit) {
-         validate.exit = (_e, el) => {
+         validate.exit = (_e: DragEvent, el: HTMLElement) => {
             el.classList.remove(classes.valid, classes.invalid);
          };
       }

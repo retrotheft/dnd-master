@@ -6,19 +6,21 @@ export type ExtensionRecord = Record<string, any>;
 
 export type HookFn = (event: DragEvent, element: HTMLElement) => void;
 
-export type BaseHooks = {
-  dragstart?: HookFn;
-  dragend?: HookFn;
-  dragenter?: HookFn;
-  dragover?: HookFn;
-  dragleave?: HookFn;
-  drop?: HookFn;
-  stop?: HookFn;
-};
-
 export type DataCallback = (() => unknown) & BaseHooks;
 
 export type DropCallback = ((data: unknown) => void) & BaseHooks;
+
+export type BaseHooks = {
+  dragstart?: (event: DragEvent, element: HTMLElement, dataCallback?: DataCallback) => void;
+  dragend?: (event: DragEvent, element: HTMLElement, dataCallback?: DataCallback) => void;
+  dragenter?: (event: DragEvent, element: HTMLElement, dropCallback?: DropCallback, dataCallback?: DataCallback) => void;
+  dragover?: (event: DragEvent, element: HTMLElement, dropCallback?: DropCallback, dataCallback?: DataCallback) => void;
+  dragleave?: (event: DragEvent, element: HTMLElement, dropCallback?: DropCallback, dataCallback?: DataCallback) => void;
+  drop?: (event: DragEvent, element: HTMLElement, dropCallback?: DropCallback, dataCallback?: DataCallback) => void;
+  stop?: (event: DragEvent, element: HTMLElement, dataCallback?: DataCallback) => void;
+};
+
+
 
 export type Middleware = Partial<{
   dragstart: (event: DragEvent, el: HTMLElement, dataCallback: DataCallback) => void;
@@ -129,7 +131,7 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
   function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.preventDefault();
     const data = dataCallback();
-    dropCallback?.dragenter?.(event, element, data);
+    dropCallback?.dragenter?.(event, element);
     dataCallback.dragenter?.(event, element);
     for (const m of middlewares) m.dragenter?.(event, element, dropCallback, dataCallback);
   }
@@ -137,14 +139,14 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
   function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.preventDefault();
     const data = dataCallback();
-    dropCallback?.dragover?.(event, element, data);
+    dropCallback?.dragover?.(event, element);
     dataCallback.dragover?.(event, element);
     for (const m of middlewares) m.dragover?.(event, element, dropCallback, dataCallback);
   }
 
   function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     const data = dataCallback();
-    dropCallback?.dragleave?.(event, element, data);
+    dropCallback?.dragleave?.(event, element);
     dataCallback.dragleave?.(event, element);
     for (const m of middlewares) m.dragleave?.(event, element, dropCallback, dataCallback);
   }
@@ -152,7 +154,7 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
   function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.stopPropagation();
     const data = dataCallback();
-    dropCallback?.drop?.(event, element, data);
+    dropCallback?.drop?.(event, element);
 
     for (const m of middlewares) {
       const result = m.drop?.(event, element, dropCallback, dataCallback);
