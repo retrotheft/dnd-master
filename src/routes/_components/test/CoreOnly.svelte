@@ -11,6 +11,9 @@
       drop: () => {
          dropCount++
          console.log("Item was dropped!")
+      },
+      dragover: (event, element) => {
+         console.log(event, element)
       }
    })
 

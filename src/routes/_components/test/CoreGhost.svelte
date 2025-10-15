@@ -19,6 +19,9 @@
    `
 
    const item = dnd.draggable("Ghost Item", {
+      dragstart: () => {
+         dnd.setGhost(ghost)
+      },
       drop: (event: DragEvent, element: HTMLElement) => {
          dropCount++
          console.log("Ghost item was dropped!")
@@ -28,7 +31,7 @@
       }
    })
 
-   const itemWithGhost = dnd.ghost(item, ghost)
+   // const itemWithGhost = dnd.ghost(item, ghost)
 
    const dropzone = dnd.dropzone(data => {
       lastDropped = "Ghost Item"
@@ -40,7 +43,7 @@
    <h3>Core + Ghost Test</h3>
    <p>Drag and drop with custom ghost image</p>
 
-   <div class="draggable" {@attach itemWithGhost}>
+   <div class="draggable" {@attach item}>
       Drag me (with ghost) 👻
    </div>
 

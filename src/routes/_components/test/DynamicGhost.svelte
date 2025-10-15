@@ -1,6 +1,6 @@
 <script lang="ts">
    import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
-   import { ghostMiddleware, type GhostHooks } from '$lib/middleware/ghost.js'
+   import { ghostMiddleware } from '$lib/middleware/ghost.js'
    import { validationMiddleware } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
@@ -57,12 +57,12 @@
       lastDropped = data
    })
 
-   // Draggable validation + dynamic ghost switching!
-   const isPremiumZone = dnd.assertZone(element =>
-      element.dataset.zone === "premium"
-   )
+   const isPremiumZone = dnd.assertZone(element => element.dataset.zone === "premium")
 
    const premiumItem = isPremiumZone.soGive("Premium Item", {
+      dragstart: () => dnd.setGhost(premiumGhost),
+      dragleave: () => dnd.setGhost(premiumGhost),
+      dragover: (_, element) => isPremiumZone(element) ? dnd.setGhost(validGhost) : dnd.setGhost(invalidGhost),
       drop: () => {
          dropCount++
          validDrops++
@@ -75,7 +75,7 @@
       }
    })
 
-   const premiumItemWithGhost = dnd.ghost(premiumItem, premiumGhost, validGhost, invalidGhost)
+
 
    // Regular item
    const regularGhost = document.createElement('div')
@@ -102,8 +102,6 @@
       }
    })
 
-   const regularItemWithGhost = dnd.ghost(regularItem, regularGhost)
-
    // Forbidden item with dynamic ghost
    const forbiddenGhost = document.createElement('div')
    forbiddenGhost.textContent = "🚫 Forbidden Item"
@@ -128,8 +126,6 @@
          console.log("Forbidden item was rejected!")
       }
    })
-
-   const forbiddenItemWithGhost = dnd.ghost(forbiddenItem, forbiddenGhost)
 </script>
 
 <div class="container">
@@ -138,17 +134,17 @@
 
    <div class="items">
       <h4>Draggable Items:</h4>
-      <div class="draggable premium" {@attach premiumItemWithGhost}>
+      <div class="draggable premium" {@attach premiumItem}>
          💎 Premium Item
          <small>(ghost changes: ✅ over premium, ❌ over regular)</small>
       </div>
 
-      <div class="draggable regular" {@attach regularItemWithGhost}>
+      <div class="draggable regular" {@attach regularItem}>
          📦 Regular Item
          <small>(static blue ghost)</small>
       </div>
 
-      <div class="draggable forbidden" {@attach forbiddenItemWithGhost}>
+      <div class="draggable forbidden" {@attach forbiddenItem}>
          🚫 Forbidden Item
          <small>(turns red ❌ over any zone)</small>
       </div>
