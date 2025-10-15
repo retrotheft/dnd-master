@@ -36,7 +36,6 @@
       }
    })
 
-   // Use DataPredicate extension for type-safe validation
    const isString = dnd.assertData((data: unknown): data is string =>
       typeof data === "string" && data !== "Rejected Item"
    )
@@ -45,7 +44,7 @@
    // dnd.classes('valid', 'invalid')
 
    // Create dropzone with the predicate
-   const dropzone = isString.soDrop((data: string) => {
+   const dropzone = isString.soDrop(data => {
       lastDropped = data  // data is correctly typed as string!
    })
 </script>

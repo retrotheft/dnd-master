@@ -9,6 +9,7 @@
 
    // Create ghost element
    const ghost = document.createElement('div')
+   ghost.textContent = "👻 Ghost Item"
    ghost.style.cssText = `
       background: #ff5722;
       color: white;
@@ -18,10 +19,6 @@
    `
 
    const item = dnd.draggable("Ghost Item", {
-      ghost,
-      dragstart: (event: DragEvent, element: HTMLElement) => {
-         ghost.textContent = "👻 Ghost Item"
-      },
       drop: (event: DragEvent, element: HTMLElement) => {
          dropCount++
          console.log("Ghost item was dropped!")
@@ -30,6 +27,8 @@
          console.log("Ghost drop was cancelled")
       }
    })
+
+   const itemWithGhost = dnd.ghost(item, ghost)
 
    const dropzone = dnd.dropzone(data => {
       lastDropped = "Ghost Item"
@@ -41,7 +40,7 @@
    <h3>Core + Ghost Test</h3>
    <p>Drag and drop with custom ghost image</p>
 
-   <div class="draggable" {@attach item}>
+   <div class="draggable" {@attach itemWithGhost}>
       Drag me (with ghost) 👻
    </div>
 

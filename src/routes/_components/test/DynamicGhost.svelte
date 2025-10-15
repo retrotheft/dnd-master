@@ -1,11 +1,11 @@
 <script lang="ts">
    import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
    import { ghostMiddleware, type GhostHooks } from '$lib/middleware/ghost.js'
-   import { validationMiddleware, classes, type ValidationHooks, DataPredicate, DropPredicate } from '$lib/middleware/validate.js'
+   import { validationMiddleware } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
-      .use<GhostHooks>(ghostMiddleware)
-      .use<ValidationHooks>(validationMiddleware)
+      .use(validationMiddleware)
+      .use(ghostMiddleware)
 
    let dropCount = $state(0)
    let validDrops = $state(0)
@@ -49,52 +49,37 @@
    `
 
    // Dropzone validation
-   const isString = DataPredicate((data): data is string =>
+   const isValidString = dnd.assertData((data): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
-   const dropCallback = isString.soDrop(data => {
+   const dropzone = isValidString.soDrop(data => {
       lastDropped = data
    })
-   classes('valid', 'invalid')(dropCallback.validate)
 
    // Draggable validation + dynamic ghost switching!
-   const canDropOnPremium = DropPredicate(element =>
+   const isPremiumZone = dnd.assertZone(element =>
       element.dataset.zone === "premium"
    )
 
-   const premiumItem = canDropOnPremium.soGive(() => "Premium Item") as DataCallback<GhostHooks & ValidationHooks>
-   premiumItem.ghost = premiumGhost
-
-   // Dynamic ghost switching based on validation!
-   premiumItem.dragover = (event: DragEvent, element: HTMLElement) => {
-      // const dropzone = (event.target as HTMLElement).closest('[data-zone]') as HTMLElement
-      const dropzone = true
-      if (dropzone && canDropOnPremium(element)) {
-         premiumItem.ghost = validGhost
-
-      } else if (dropzone) {
-         premiumItem.ghost = invalidGhost
+   const premiumItem = isPremiumZone.soGive("Premium Item", {
+      drop: () => {
+         dropCount++
+         validDrops++
+         console.log("Premium item was dropped!")
+      },
+      stop: () => {
+         dropCount++
+         rejectedDrops++
+         console.log("Premium item was rejected!")
       }
-   }
+   })
 
-   premiumItem.dragleave = (event, element) => {
-      premiumItem.ghost = premiumGhost
-   }
-
-   premiumItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Premium item was dropped!")
-   }
-   premiumItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Premium item was rejected!")
-   }
+   const premiumItemWithGhost = dnd.ghost(premiumItem, premiumGhost, validGhost, invalidGhost)
 
    // Regular item
    const regularGhost = document.createElement('div')
+   regularGhost.textContent = "👻 Regular Ghost"
    regularGhost.style.cssText = `
       background: #2196f3;
       color: white;
@@ -104,24 +89,24 @@
       font-weight: 600;
    `
 
-   const regularItem: DataCallback<GhostHooks & ValidationHooks> = () => "Regular Item"
-   regularItem.ghost = regularGhost
-   regularItem.dragstart = (event: DragEvent, element: HTMLElement) => {
-      regularGhost.textContent = "📦 Regular Item"
-   }
-   regularItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Regular item was dropped!")
-   }
-   regularItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Regular item was rejected!")
-   }
+   const regularItem = dnd.draggable("Regular Item", {
+      drop: () => {
+         dropCount++
+         validDrops++
+         console.log("Regular item was dropped!")
+      },
+      stop: () => {
+         dropCount++
+         rejectedDrops++
+         console.log("Regular item was rejected!")
+      }
+   })
+
+   const regularItemWithGhost = dnd.ghost(regularItem, regularGhost)
 
    // Forbidden item with dynamic ghost
    const forbiddenGhost = document.createElement('div')
+   forbiddenGhost.textContent = "🚫 Forbidden Item"
    forbiddenGhost.style.cssText = `
       background: #9e9e9e;
       color: white;
@@ -131,26 +116,20 @@
       font-weight: 600;
    `
 
-   const forbiddenItem: DataCallback<GhostHooks & ValidationHooks> = () => "Forbidden Item"
-   forbiddenItem.ghost = forbiddenGhost
-   forbiddenItem.dragstart = (event: DragEvent, element: HTMLElement) => {
-      forbiddenGhost.textContent = "🚫 Forbidden Item"
-   }
-   // Changes to red X over dropzones
-   forbiddenItem.dragenter = (event: DragEvent, element: HTMLElement) => {
-      forbiddenItem.ghost = invalidGhost
-      invalidGhost.textContent = "🚫 Not allowed!"
-   }
-   forbiddenItem.drop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      validDrops++
-      console.log("Forbidden item was dropped!")
-   }
-   forbiddenItem.stop = (event: DragEvent, element: HTMLElement) => {
-      dropCount++
-      rejectedDrops++
-      console.log("Forbidden item was rejected!")
-   }
+   const forbiddenItem = dnd.draggable("Forbidden Item", {
+      drop: () => {
+         dropCount++
+         validDrops++
+         console.log("Forbidden item was dropped!")
+      },
+      stop: () => {
+         dropCount++
+         rejectedDrops++
+         console.log("Forbidden item was rejected!")
+      }
+   })
+
+   const forbiddenItemWithGhost = dnd.ghost(forbiddenItem, forbiddenGhost)
 </script>
 
 <div class="container">
@@ -159,17 +138,17 @@
 
    <div class="items">
       <h4>Draggable Items:</h4>
-      <div class="draggable premium" {@attach dnd.draggable(premiumItem)}>
+      <div class="draggable premium" {@attach premiumItemWithGhost}>
          💎 Premium Item
          <small>(ghost changes: ✅ over premium, ❌ over regular)</small>
       </div>
 
-      <div class="draggable regular" {@attach dnd.draggable(regularItem)}>
+      <div class="draggable regular" {@attach regularItemWithGhost}>
          📦 Regular Item
          <small>(static blue ghost)</small>
       </div>
 
-      <div class="draggable forbidden" {@attach dnd.draggable(forbiddenItem)}>
+      <div class="draggable forbidden" {@attach forbiddenItemWithGhost}>
          🚫 Forbidden Item
          <small>(turns red ❌ over any zone)</small>
       </div>
@@ -177,13 +156,13 @@
 
    <div class="zones">
       <h4>Drop Zones:</h4>
-      <div class="dropzone premium" data-zone="premium" {@attach dnd.dropzone(dropCallback)}>
+      <div class="dropzone premium" data-zone="premium" {@attach dropzone}>
          <strong>💎 Premium Zone</strong><br>
          Requires: Premium validation + valid data<br>
          Last: {lastDropped || "empty"}
       </div>
 
-      <div class="dropzone regular" data-zone="regular" {@attach dnd.dropzone(dropCallback)}>
+      <div class="dropzone regular" data-zone="regular" {@attach dropzone}>
          <strong>📦 Regular Zone</strong><br>
          Requires: No draggable validation + valid data<br>
          Last: {lastDropped || "empty"}

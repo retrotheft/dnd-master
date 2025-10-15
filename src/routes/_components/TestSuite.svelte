@@ -4,19 +4,19 @@
    import CoreGhost from './test/CoreGhost.svelte'
    // import CoreBoth from './test/CoreBoth.svelte'
    import TwoWayValidation from './test/TwoWayValidation.svelte'
-   // import DynamicGhost from './test/DynamicGhost.svelte'
+   import DynamicGhost from './test/DynamicGhost.svelte'
 </script>
 
 <main>
    <h1>DND Library Test Suite</h1>
    <p>Testing all combinations of core functionality with middleware</p>
 
-   <CoreOnly />
-   <CoreValidation />
+   <!-- <CoreOnly /> -->
+   <!-- <CoreValidation /> -->
    <CoreGhost />
    <!-- <CoreBoth /> -->
    <TwoWayValidation />
-   <!-- <DynamicGhost /> -->
+   <DynamicGhost />
 </main>
 
 <style>

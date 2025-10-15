@@ -7,29 +7,29 @@
    let dropCount = $state(0)
    let validDrops = $state(0)
    let rejectedDrops = $state(0)
-   let lastDropped = $state<string>("")
+   let lastDropped = $state("")
 
    // Define what data is valid (dropzone-side validation)
-   const isString = dnd.assertData((data: unknown): data is string =>
+   const isValidString = dnd.assertData((data): data is string =>
       typeof data === "string" && data !== "Forbidden Item"
    )
 
-   const dropCallback = isString.soDrop((data: string) => {
+   const dropzone = isValidString.soDrop(data => {
       lastDropped = data
    })
 
    // Define what can drop on "premium" zones (draggable-side validation)
-   const canDropOnPremium = dnd.assertZone((element: HTMLElement) =>
+   const isPremiumZone = dnd.assertZone(element =>
       element.dataset.zone === "premium"
    )
 
-   const premiumItem = canDropOnPremium.soGive("Premium Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
+   const premiumItem = isPremiumZone.soGive("Premium Item", {
+      drop: () => {
          dropCount++
          validDrops++
          console.log("Premium item was dropped!")
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
+      stop: (event, element) => {
          dropCount++
          rejectedDrops++
          console.log("Premium item was rejected - wrong zone!")
@@ -38,12 +38,12 @@
 
    // Regular item with no draggable-side validation
    const regularItem = dnd.draggable("Regular Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
+      drop: () => {
          dropCount++
          validDrops++
          console.log("Regular item was dropped!")
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
+      stop: () => {
          dropCount++
          rejectedDrops++
          console.log("Regular item was rejected!")
@@ -52,12 +52,12 @@
 
    // Forbidden item that will fail dropzone validation
    const forbiddenItem = dnd.draggable("Forbidden Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
+      drop: () => {
          dropCount++
          validDrops++
          console.log("Forbidden item was dropped!")
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
+      stop: () => {
          dropCount++
          rejectedDrops++
          console.log("Forbidden item was rejected!")
@@ -86,13 +86,13 @@
 
    <div class="zones">
       <h4>Drop Zones:</h4>
-      <div class="dropzone premium" data-zone="premium" {@attach dropCallback}>
+      <div class="dropzone premium" data-zone="premium" {@attach dropzone}>
          <strong>Premium Zone</strong><br>
          Only accepts: Premium items + valid strings<br>
          Last dropped: {lastDropped || "empty"}
       </div>
 
-      <div class="dropzone regular" data-zone="regular" {@attach dropCallback}>
+      <div class="dropzone regular" data-zone="regular" {@attach dropzone}>
          <strong>Regular Zone</strong><br>
          Accepts: Regular items + valid strings (not Premium)<br>
          Last dropped: {lastDropped || "empty"}

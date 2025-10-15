@@ -43,38 +43,46 @@ export type Middleware<THooks = {}, TExtensions = {}> = {
    __hooks?: THooks  // Phantom type parameter for type inference
 }
 
-export type DndInstance<TMiddlewareHooks = {}> = {
+export type DndInstance<TMiddlewareHooks = {}, TExtensions = {}> = {
    draggable: Draggable<TMiddlewareHooks>,
    dropzone: Dropzone<TMiddlewareHooks>,
-   use: <TNewHooks, TExtensions = {}>(
-      middleware: Middleware<TNewHooks, TExtensions>
-   ) => DndInstance<TMiddlewareHooks & TNewHooks> & TExtensions,
-}
+   use: <TNewHooks, TNewExtensions = {}>(
+      middleware: Middleware<TNewHooks, TNewExtensions>
+   ) => DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions,
+} & TExtensions
 
+let count = 0
 // Factory function to create DND instances
-export function createDnd<TMiddlewareHooks = {}>(): DndInstance<TMiddlewareHooks> {
+export function createDnd<TMiddlewareHooks = {}, TExtensions = {}>(): DndInstance<TMiddlewareHooks, TExtensions> {
    let dataCallback: DataCallback | (() => void) & BaseHooks = () => { }
    let middlewares: Middleware<any, any>[] = []
+   let allExtensions: any = {}
 
-   function use<TNewHooks, TExtensions = {}>(
-      middleware: Middleware<TNewHooks, TExtensions>
-   ): DndInstance<TMiddlewareHooks & TNewHooks> & TExtensions {
-      middlewares.push(middleware)
+   function use<TNewHooks, TNewExtensions = {}>(
+         middleware: Middleware<TNewHooks, TNewExtensions>
+      ): DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions {
+         middlewares.push(middleware)
 
-      const instance = {
-         draggable,
-         dropzone,
-         use,
-      } as DndInstance<TMiddlewareHooks & TNewHooks>
+         const instance = {
+            draggable,
+            dropzone,
+            use,
+         } as DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions>
 
-      // Get extensions from middleware - cast draggable/dropzone to any to avoid type conflicts
-      const extensions = middleware.extensions?.(draggable as any, dropzone as any) || {} as TExtensions
+         // Get extensions from this middleware
+         const newExtensions = middleware.extensions?.(draggable as any, dropzone as any) || {} as TNewExtensions
 
-      return {
-         ...instance,
-         ...extensions
-      } as DndInstance<TMiddlewareHooks & TNewHooks> & TExtensions
-   }
+         // Accumulate extensions
+         allExtensions = {
+            ...allExtensions,
+            ...newExtensions
+         }
+
+         return {
+            ...instance,
+            ...allExtensions // Return ALL accumulated extensions
+         } as DndInstance<TMiddlewareHooks & TNewHooks, TExtensions & TNewExtensions> & TExtensions & TNewExtensions
+      }
 
    /* ===================== Factories ===================== */
 
@@ -211,7 +219,7 @@ export function createDnd<TMiddlewareHooks = {}>(): DndInstance<TMiddlewareHooks
       draggable,
       dropzone,
       use
-   }
+   } as DndInstance<TMiddlewareHooks, TExtensions>
 }
 
 // Helper function to define middlewares with type inference
