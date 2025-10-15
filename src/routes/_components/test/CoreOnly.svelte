@@ -11,14 +11,10 @@
       drop: () => {
          dropCount++
          console.log("Item was dropped!")
-      },
-      dragover: (event, element) => {
-         console.log(event, element)
       }
    })
 
    const dropzone = dnd.dropzone(data => {
-      console.log("Data", data)
       if (typeof data === "string") lastDropped = data
       console.log("Dropzone received item")
    })

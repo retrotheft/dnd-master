@@ -34,12 +34,13 @@
    `
 
    const allowedData = dnd.draggable("Premium Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
+      dragstart: () => dnd.setGhost(allowedGhost),
+      drop: () => {
          dropCount++
          validDrops++
          console.log("Premium item was dropped!")
       },
-      stop:(event: DragEvent, element: HTMLElement) => {
+      stop:() => {
          dropCount++
          rejectedDrops++
          console.log("Premium item drop was rejected")
@@ -48,13 +49,13 @@
 
    // Rejected item data callback
    const rejectedData = dnd.draggable("Forbidden Item", {
-      dragstart: (event: DragEvent, element: HTMLElement) => dnd.setGhost(rejectedGhost),
-      drop: (event: DragEvent, element: HTMLElement) => {
+      dragstart: () => dnd.setGhost(rejectedGhost),
+      drop: () => {
          dropCount++
          validDrops++
          console.log("Forbidden item was dropped!")
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
+      stop: () => {
          dropCount++
          rejectedDrops++
          console.log("Forbidden item drop was rejected")
@@ -76,7 +77,7 @@
       Drag me (premium) ✨
    </div>
 
-   <div class="draggable rejected" {@attach rejected}>
+   <div class="draggable rejected" {@attach rejectedData}>
       Drag me (forbidden) 🚫
    </div>
 
