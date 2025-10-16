@@ -41,7 +41,7 @@ The same way we do with data, here we create a dropzone attachment, this time pa
 ```ts
 let lastDropped = $state()
 
-const dropzone = dnd.dropzone((data) => {
+const dropzone = dnd.dropzone(data => {
    lastDropped = data
 })
 ```
@@ -70,7 +70,7 @@ There are hooks for each drag event: `dragstart`, `dragover`, `dragenter`, `drag
 
 ## Middleware
 
-You can extend **dnd-master** with middleware, and it ships with two included: **validate** and **ghost**. Middlewares work by attaching extension functions to the `dnd` instance, and can also attach their own hooks to the data and drop callbacks.
+You can extend **dnd-master** with middleware, and it ships with two included: **validate** and **ghost**. Middlewares work by attaching extension functions to the `dnd` instance, and can also attach their own hooks to your data and dropzone attachments.
 
 In order to use middleware, you need to import `createDnd` and create a `dnd` instance, then import the middleware you'd like and pass it into `dnd.use`, like this:
 
@@ -134,6 +134,8 @@ const isPremiumZone = dnd.assertZone(element =>
 
 const premiumItem = isPremiumZone.soGive("Premium Item")
 ```
+
+`soGive` uses `dnd.draggable` internally, so again, you can use hooks.
 
 There's no need to make the zone predicate a type assertion.
 
