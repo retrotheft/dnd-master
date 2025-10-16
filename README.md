@@ -69,7 +69,7 @@ const dataAttachment = dnd.draggable(data, {
 
 This lets you run logic on either the drag or drop side of the operation cleanly.
 
-There are hooks for each drag event: `dragstart`, `dragover`, `dragenter`, `dragexit`, `dragend`, and `drop`, `stop`, and `cancel`.
+There are hooks for each drag event: `dragstart`, `dragover`, `dragenter`, `dragexit`, `dragend`, and `drop`. There are also: `stop`, and `cancel`. (More on those in a moment.)
 
 All hooks run *before* middleware runs, with the exception of the Data Attachment `drop` hook. This will only run on a successful drop, which happens after the middleware. For cancellations, use the `cancel` hook, and for interrupted drops, (i.e. validation refused the drop) use `stop`.
 
