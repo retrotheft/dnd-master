@@ -68,6 +68,12 @@ This lets you run logic on either the drag or drop side of the operation cleanly
 
 There are hooks for each drag event: `dragstart`, `dragover`, `dragenter`, `dragexit`, `dragend`, and `drop`. There is also `stop`, which will run if any middleware cancels the drag operation. `stop` does not run if the user cancels the drag operation.
 
+All hooks run *before* middleware runs, with the exception of the Data Attachment `drop` hook. This will only run on a successful drop, which happens after the middleware.
+
+Note that if you want to run logic on the dropzone side only on a successful drop, put that logic into your drop callback itself, not into the `drop` hook.
+
+Anytime middleware cancels a drop (**validate** does this) the `stop` hook will be called.
+
 ## Middleware
 
 You can extend **dnd-master** with middleware, and it ships with two included: **validate** and **ghost**. Middlewares work by attaching extension functions to the `dnd` instance, and can also attach their own hooks to your data and dropzone attachments.

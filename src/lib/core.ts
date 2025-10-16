@@ -130,7 +130,6 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
 
   function dragEnter(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.preventDefault();
-    const data = dataCallback();
     dropCallback?.dragenter?.(event, element);
     dataCallback.dragenter?.(event, element);
     for (const m of middlewares) m.dragenter?.(event, element, dropCallback, dataCallback);
@@ -138,14 +137,12 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
 
   function dragOver(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.preventDefault();
-    const data = dataCallback();
     dropCallback?.dragover?.(event, element);
     dataCallback.dragover?.(event, element);
     for (const m of middlewares) m.dragover?.(event, element, dropCallback, dataCallback);
   }
 
   function dragLeave(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
-    const data = dataCallback();
     dropCallback?.dragleave?.(event, element);
     dataCallback.dragleave?.(event, element);
     for (const m of middlewares) m.dragleave?.(event, element, dropCallback, dataCallback);
@@ -153,7 +150,6 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
 
   function drop(event: DragEvent, element: HTMLElement, dropCallback?: DropCallback) {
     event.stopPropagation();
-    const data = dataCallback();
     dropCallback?.drop?.(event, element);
 
     for (const m of middlewares) {
@@ -165,6 +161,8 @@ export function createDnd<Ext extends ExtensionRecord = {}>(
     }
 
     dataCallback.drop?.(event, element);
+
+    const data = dataCallback();
     dropCallback?.(data);
   }
 

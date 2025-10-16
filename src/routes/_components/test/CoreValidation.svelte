@@ -37,7 +37,6 @@
    });
 
    const isString = dnd.assertData((data): data is string => {
-      console.log(data);
       return typeof data === "string" && data !== "Rejected Item";
    });
 
