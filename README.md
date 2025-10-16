@@ -231,3 +231,23 @@ This allows you to dynamically update your ghost image, and without the ghost an
 ## Mobile Support
 
 From v1.0.2, there's a **touch** middleware included for mobile support. I've not developed for mobile before so there are probably edge cases (multi-touch, scrolling etc.) that need to be addressed. Please let me know if you run into issues!
+
+You can use it like this:
+
+```ts
+import { touch } from '$lib/middleware/touch.js';
+
+const dnd = createDnd().use(touch) // Clean instance with no middleware
+```
+
+or:
+
+```ts
+import { createTouch } from '$lib/middleware/touch.js'
+
+const dnd = createDnd().use(createTouch({
+   longPressDuration: 200,
+   scrollThreshold: 10,
+   autoGhost: true
+}))
+```
