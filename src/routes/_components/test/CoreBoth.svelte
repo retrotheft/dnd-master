@@ -1,11 +1,11 @@
 <script lang="ts">
    import { createDnd } from '$lib/core.js'
-   import { ghostMiddleware } from '$lib/middleware/ghost.js'
-   import { validationMiddleware } from '$lib/middleware/validate.js'
+   import { ghost } from '$lib/middleware/ghost.js'
+   import { validate } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
-      .use(ghostMiddleware)
-      .use(validationMiddleware)
+      .use(ghost)
+      .use(validate)
 
    let dropCount = $state(0)
    let validDrops = $state(0)

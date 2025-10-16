@@ -1,8 +1,8 @@
 <script lang="ts">
    import { createDnd } from '$lib/core.js'
-   import { validationMiddleware } from '$lib/middleware/validate.js'
+   import { validate } from '$lib/middleware/validate.js'
 
-   const dnd = createDnd().use(validationMiddleware)
+   const dnd = createDnd().use(validate)
 
    let dropCount = $state(0)
    let validDrops = $state(0)

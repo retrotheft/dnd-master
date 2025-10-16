@@ -1,11 +1,11 @@
 <script lang="ts">
    import { createDnd, type DataCallback, type DropCallback } from '$lib/core.js'
-   import { ghostMiddleware } from '$lib/middleware/ghost.js'
-   import { validationMiddleware } from '$lib/middleware/validate.js'
+   import { ghost } from '$lib/middleware/ghost.js'
+   import { validate } from '$lib/middleware/validate.js'
 
    const dnd = createDnd()
-      .use(validationMiddleware)
-      .use(ghostMiddleware)
+      .use(validate)
+      .use(ghost)
 
    let dropCount = $state(0)
    let validDrops = $state(0)

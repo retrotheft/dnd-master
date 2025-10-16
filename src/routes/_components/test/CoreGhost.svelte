@@ -1,16 +1,18 @@
 <script lang="ts">
    import { createDnd } from '$lib/core.js'
-   import { ghostMiddleware } from '$lib/middleware/ghost.js'
+   import { ghost } from '$lib/middleware/ghost.js'
 
-   const dnd = createDnd().use(ghostMiddleware)
+   const dnd = createDnd().use(ghost)
 
    let dropCount = $state(0)
    let lastDropped = $state("")
 
+   let ghostElement2 = $state<HTMLDivElement>()
+
    // Create ghost element
-   const ghost = document.createElement('div')
-   ghost.textContent = "👻 Ghost Item"
-   ghost.style.cssText = `
+   const ghostElement = document.createElement('div')
+   ghostElement.textContent = "👻 Ghost Item"
+   ghostElement.style.cssText = `
       background: #ff5722;
       color: white;
       padding: 0.5rem;
@@ -19,14 +21,12 @@
    `
 
    const item = dnd.draggable("Ghost Item", {
-      dragstart: () => {
-         dnd.setGhost(ghost)
-      },
-      drop: (event: DragEvent, element: HTMLElement) => {
+      dragstart: () => dnd.setGhost(ghostElement2 || ghostElement),
+      drop: () => {
          dropCount++
          console.log("Ghost item was dropped!")
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
+      stop: () => {
          console.log("Ghost drop was cancelled")
       }
    })
@@ -38,6 +38,10 @@
       console.log("Dropzone received ghost item")
    })
 </script>
+
+<template>
+   <div class="ghost" bind:this={ghostElement2}>👻 Ghost Item</div>
+</template>
 
 <div class="container">
    <h3>Core + Ghost Test</h3>
@@ -56,6 +60,14 @@
 </div>
 
 <style>
+   div.ghost {
+      background: #7022ff;
+      color: white;
+      padding: 0.5rem;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+   }
+
    .container {
       border: 2px solid #ff9800;
       padding: 1rem;

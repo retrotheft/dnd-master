@@ -50,7 +50,7 @@ export type ValidationExtensions = {
    Validation Middleware
 ============================================================ */
 
-export function validationMiddleware(instance: DndInstance) {
+export function validate(instance: DndInstance) {
    // Cache validation results during drag operations
    let validationCache = new WeakMap<
       HTMLElement,

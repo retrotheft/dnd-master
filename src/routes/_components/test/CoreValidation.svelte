@@ -1,55 +1,50 @@
 <script lang="ts">
-   import { createDnd } from '$lib/core.js'
-   import { validationMiddleware } from '$lib/middleware/validate.js'
+   import { createDnd } from "$lib/core.js";
+   import { validate } from "$lib/middleware/validate.js";
 
-   const dnd = createDnd().use(validationMiddleware)
+   const dnd = createDnd().use(validate);
 
-   let dropCount = $state(0)
-   let validDrops = $state(0)
-   let rejectedDrops = $state(0)
-   let lastDropped = $state<string>("")
+   let dropCount = $state(0);
+   let validDrops = $state(0);
+   let rejectedDrops = $state(0);
+   let lastDropped = $state("");
 
    // Create items using the new API - just pass data and hooks
    const allowedItem = dnd.draggable("Allowed Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
-         dropCount++
-         validDrops++
-         console.log("Allowed item was dropped!")
+      drop: () => {
+         dropCount++;
+         validDrops++;
+         console.log("Allowed item was dropped!");
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
-         dropCount++
-         rejectedDrops++
-         console.log("Allowed item drop was rejected")
-      }
-   })
+      stop: () => {
+         dropCount++;
+         rejectedDrops++;
+         console.log("Allowed item drop was rejected");
+      },
+   });
 
    const rejectedItem = dnd.draggable("Rejected Item", {
-      drop: (event: DragEvent, element: HTMLElement) => {
-         dropCount++
-         validDrops++
-         console.log("Rejected item was dropped!")
+      drop: () => {
+         dropCount++;
+         validDrops++;
+         console.log("Rejected item was dropped!");
       },
-      stop: (event: DragEvent, element: HTMLElement) => {
-         dropCount++
-         rejectedDrops++
-         console.log("Rejected item drop was rejected")
-      }
-   })
+      stop: () => {
+         dropCount++;
+         rejectedDrops++;
+         console.log("Rejected item drop was rejected");
+      },
+   });
 
-   const isString = dnd.assertData((data: unknown): data is string => {
-      console.log(data)
-      return typeof data === "string" && data !== "Rejected Item"
-
-   }
-   )
-
-   // Apply visual feedback classes to the validate function
-   // dnd.classes('valid', 'invalid')
+   const isString = dnd.assertData((data): data is string => {
+      console.log(data);
+      return typeof data === "string" && data !== "Rejected Item";
+   });
 
    // Create dropzone with the predicate
-   const dropzone = isString.soDrop(data => {
-      lastDropped = data  // data is correctly typed as string!
-   })
+   const dropzone = isString.soDrop((data) => {
+      lastDropped = data; // data is correctly typed as string!
+   });
 </script>
 
 <div class="container">

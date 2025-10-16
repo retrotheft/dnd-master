@@ -10,60 +10,58 @@ npm install dnd-master
 
 ## Quickstart
 
+If you just want to get started with a simple drag and drop, you can import the `dnd` singleton. This has no middleware.
+
 ```ts
 import { dnd } from 'dnd-master'
 
-const data = { suit: 'Hearts', rank: 'A', name: "Ace of Hearts" }
+const data = { name: 'Alice' }
 ```
 
-### Data Callbacks
+### Data Attachments
 
-To pass data, create a **data callback**. This is just a function that returns your data, like this:
+To pass data, create a data attachment using `dnd.draggable`, like this:
 
 ```ts
-const dataCallback = () => data
+const dataAttachment = dnd.draggable(data)
 ```
 
-The reason for this is that later, we will attach hooks to this callback, so we need to wrap the data.
+Then attach it to an element:
 
-### Draggable
-
-To make an element draggable:
-
-```svelte
-<div {@attach dnd.draggable(dataCallback)}>{data.name}</div>
+```html
+<div {@attach dataAttachment}>{data.name}</div>
 ```
 
 Now, we're ready to drop.
 
-### Drop Callbacks
+### Dropzone Attachments
 
-The same way we do with data, here we create a drop callback:
+The same way we do with data, here we create a dropzone attachment, this time passing a callback that receives a `data` parameter:
 
 ```ts
 let lastDropped = $state()
 
-const dropCallback = (data) => {
+const dropzone = dnd.dropzone((data) => {
    lastDropped = data
-}
+})
 ```
 
-And to create a dropzone:
+Then attach the dropzone to an element:
 
 ```svelte
-<div {@attach dnd.dropzone(dropCallback)}>Drop Here</div>
+<div {@attach dropzone}>Drop Here</div>
 ```
 
 ## Hooks
 
-In addition to passing and receiving data, you might want to run side effects of your drag and drop operations. For instance, maybe you want your draggable component to keep a count of how many drops have happened. For this, you can put hooks onto your callbacks, like this:
+In addition to passing and receiving data, you might want to run side effects of your drag and drop operations. For instance, maybe you want to keep a count of how many drops have happened, but on the data side. For this, you can put hooks onto your callbacks, like this:
 
 ```ts
 let timesDropped = $state(0)
 
-const dataCallback = () => data
-
-dataCallback.drop = () => timesDropped++
+const dataAttachment = dnd.draggable(data, {
+   drop: () => timesDropped++
+})
 ```
 
 This lets you run logic on either the drag or drop side of the operation cleanly.
@@ -72,7 +70,18 @@ There are hooks for each drag event: `dragstart`, `dragover`, `dragenter`, `drag
 
 ## Middleware
 
-You can extend **dnd-master** with middleware, and it ships with two included: **validate** and **ghost**.
+You can extend **dnd-master** with middleware, and it ships with two included: **validate** and **ghost**. Middlewares work by attaching extension functions to the `dnd` instance, and can also attach their own hooks to the data and drop callbacks.
+
+In order to use middleware, you need to import `createDnd` and create a `dnd` instance, then import the middleware you'd like and pass it into `dnd.use`, like this:
+
+```ts
+import { createDnd } from 'dnd-master'
+import { validate, ghost } from 'dnd-master/middleware'
+
+const dnd = createDnd()
+   .use(ghost)
+   .use(validate) // you can chain .use calls!
+```
 
 ### Validate
 
@@ -82,73 +91,130 @@ Validate lets you set up validation logic on both the drag and drop sides of the
 import { createDnd } from 'dnd-master'
 import { validate } from 'dnd-master/middleware'
 
-const dnd = createDnd()
-dnd.use(validate)
+const dnd = createDnd().use(validate)
 ```
 
-#### classes
+#### CSS Classes
 
-The `classes` helper function lets you set up your own classNames for valid and invalid drops.
+The default css classes are `valid` and `invalid`. If you'd like to override them, you can call `dnd.classes`. Note that the validate middleware needs to have been added to dnd first for the `classes` function to be available.
 
-#### Predicate
+```ts
+const dnd = createDnd().use(validate)
 
-`Predicate` is a helper class that lets you set up your validation condition, and then create a typed callback.
+dnd.classes('myValidClass', 'myInvalidClass')
+````
+
+#### Validating Data & Dropzones
+
+To use validation, you can use the functions `assertData` and `assertZone`. These functions receive a predicate (which can also be a type assertion) and return a validator function which also has a builder on it. That's a bit confusing, so let's see it in action and then explain what's happening.
+
+```ts
+let lastDropped = $state('')
+
+const isString = dnd.assertData((data): data is string =>
+   typeof data === "string"
+)
+
+isString("Hello there") // returns true
+isString(1) // returns false
+
+// soDrop is a property on isString, that we can use to create a dropzone:
+const dropzone = isString.soDrop(data => lastDropped = data)
+// data will be correctly typed as a string!
+```
+
+Internally, `soDrop` just calls `dnd.dropzone`, so you can also pass hooks if you like.
+
+Now let's see the same for creating the draggable. For that we use `assertZone`, which receives an `HTMLElement`:
+
+```ts
+const isPremiumZone = dnd.assertZone(element =>
+   element.dataset.zone === "premium"
+)
+
+const premiumItem = isPremiumZone.soGive("Premium Item")
+```
+
+There's no need to make the zone predicate a type assertion.
 
 ### Ghost
 
 **Ghost** sets up a ghost image to replace the browser default, and even allows you to dynamically update it during the drag. We'll look at a simple ghost image here, and later in the advanced usage examples there's a dynamic ghost implementation.
 
+To do this, you can either create an element programmatically or bind one from inside a template. Then use the `dragstart` hook to attach the ghost:
+
 ```ts
 import { createDnd } from 'dnd-master'
 import { ghost } from 'dnd-master/middleware'
 
-const dnd = createDnd()
-dnd.use(ghost)
+const dnd = createDnd().use(ghost)
+
+const ghostElement = document.createElement('div')
+ghostElement.textContent = "👻 Ghost Item"
+ghostElement.style.cssText = `
+   background: #ff5722;
+   color: white;
+   padding: 0.5rem;
+   border-radius: 4px;
+   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+`
+
+const itemWithGhost = dnd.draggable("My Item", {
+   dragstart: () => dnd.setGhost(ghostElement)
+})
+```
+
+Or alternatively:
+
+```ts
+import { createDnd } from 'dnd-master'
+import { ghost } from 'dnd-master/middleware'
+
+const dnd = createDnd().use(ghost)
+
+let ghostElement = $state<HTMLDivElement>()
+
+const itemWithGhost = dnd.draggable("My Item", {
+   dragstart: () => dnd.setGhost(ghostElement)
+})
+```
+```html
+<template>
+   <div class="ghost" bind:this={ghostElement2}>👻 Ghost Item</div>
+</template>
+```
+```css
+div.ghost {
+   background: #7022ff;
+   color: white;
+   padding: 0.5rem;
+   border-radius: 4px;
+   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
 ```
 
 ## Advanced Usage Examples
 
 ### Dynamic Ghosts
 
-Let's set up a simple example where we have a Premium Item that can only drop onto Premium Zones, not Regular zones.
+If you want to have a dynamic ghost that updates on valid or invalid dropzones, you can do the following:
 
 ```ts
-const premiumGhost = document.createElement('div')
-premiumGhost.textContent = "💎 Premium Item"
-premiumGhost.style.cssText = `
-   background: #2196f3;
-   color: white;
-   padding: 0.75rem;
-   border-radius: 8px;
-   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-   font-weight: 600;
-   border: 2px solid #1976d2;
-`
+let defaultGhost = $state<HTMLDivElement>()
+let validGhost = $state<HTMLDivElement>()
+let invalidGhost = $state<HTMLDivElement>()
 
-const validGhost = document.createElement('div')
-validGhost.textContent = "✅ Can drop here!"
-validGhost.style.cssText = `
-   background: #4caf50;
-   color: white;
-   padding: 0.75rem;
-   border-radius: 8px;
-   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-   font-weight: 600;
-   border: 2px solid #2e7d32;
-`
-
-const invalidGhost = document.createElement('div')
-invalidGhost.textContent = "❌ Wrong zone!"
-invalidGhost.style.cssText = `
-   background: #f44336;
-   color: white;
-   padding: 0.75rem;
-   border-radius: 8px;
-   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-   font-weight: 600;
-   border: 2px solid #c62828;
-`
-
-const canDropOnPremium = DropPredicate(element =>
-   element.dataset.zone === "premium"
+const isValidZone = dnd.assertZone(element =>
+   element.dataset.zone === "valid"
 )
+
+const dynamicItem = isValidZone.soGive("Item with Dynamic Ghost", {
+   dragstart: () => dnd.setGhost(defaultGhost),
+   dragleave: () => dnd.setGhost(defaultGhost),
+   dragover: (_event, element) => {
+      isValidZone(element) ? dnd.setGhost(validGhost) : dnd.setGhost(invalidGhost)
+   }
+})
+```
+
+This allows you to dynamically update your ghost image, and without the ghost and validate middlewares needing to talk to each other at all!

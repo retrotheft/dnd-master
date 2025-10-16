@@ -1,6 +1,6 @@
 import type { DndInstance } from '../core.js'
 
-export function ghostMiddleware(instance: DndInstance) {
+export function ghost(instance: DndInstance) {
   let currentGhost: HTMLElement | null = null
   let isDragging = false
   const emptyImg = new Image()
