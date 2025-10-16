@@ -1,6 +1,9 @@
 # DnD Master
 
+**Important: I haven't published this to npm yet. Will do so in the next 24 hours.**
+
 Limitless, extensible drag and drop for Svelte.
+
 
 ## Installation
 
