@@ -57,7 +57,7 @@ Then attach the dropzone to an element:
 
 ## Hooks
 
-In addition to passing and receiving data, you might want to run side effects of your drag and drop operations. For instance, maybe you want to keep a count of how many drops have happened, but on the data side. For this, you can put hooks onto your callbacks, like this:
+In addition to passing and receiving data, you might want to run side effects of your drag and drop operations. For instance, maybe you want to keep a count of how many drops have happened, but on the data side. For this, you can set up hooks like this:
 
 ```ts
 let timesDropped = $state(0)
@@ -120,6 +120,7 @@ To use validation, you can use the functions `assertData` and `assertZone`. Thes
 ```ts
 let lastDropped = $state('')
 
+// the type assertion here is optional but highly encouraged
 const isString = dnd.assertData((data): data is string =>
    typeof data === "string"
 )
@@ -129,7 +130,7 @@ isString(1) // returns false
 
 // soDrop is a property on isString, that we can use to create a dropzone:
 const dropzone = isString.soDrop(data => lastDropped = data)
-// data will be correctly typed as a string!
+// data will be correctly typed as a string from the type assertion!
 ```
 
 Internally, `soDrop` just calls `dnd.dropzone`, so you can also pass hooks if you like.
@@ -191,7 +192,7 @@ const itemWithGhost = dnd.draggable("My Item", {
 ```
 ```html
 <template>
-   <div class="ghost" bind:this={ghostElement2}>👻 Ghost Item</div>
+   <div class="ghost" bind:this={ghostElement}>👻 Ghost Item</div>
 </template>
 ```
 ```css

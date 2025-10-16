@@ -1,23 +1,9 @@
 # Dnd-Master Todo
 
-## Fix Ghost Middleware
+## Before Release
 
-- [ ] Remove validation complexity related to Dynamic Ghost
-- [ ] correctly pass hooks from a
+- [ ] Rename `Middleware` type to `MiddlewareHooks`
 
+## Post-release
 
-## Dynamic Ghost Example:
-
-```ts
-const isPremiumZone = dnd.assertZone(element => element.dataset.zone === "premium")
-
-const premiumItem = isPremiumZone.soGive("Premium Item", {
-   dragstart: () => dnd.setGhost(premiumGhost),
-   dragleave: () => dnd.setGhost(premiumGhost),
-   dragover: (_, element) => isPremiumZone(element) ? dnd.setGhost(validGhost) : dnd.setGhost(invalidGhost)
-})
-```
-
-```html
-<div {@attach premiumItem}>Premium Item</div>
-```
+- [ ] Write guide for creating middleware
