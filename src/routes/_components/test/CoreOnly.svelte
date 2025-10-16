@@ -11,6 +11,9 @@
       drop: () => {
          dropCount++
          console.log("Item was dropped!")
+      },
+      cancel: () => {
+         console.log("Drag was cancelled")
       }
    })
 

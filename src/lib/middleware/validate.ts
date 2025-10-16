@@ -2,8 +2,6 @@ import type {
    DndInstance,
    Middleware,
    BaseHooks,
-   DropCallback,
-   DataCallback,
    Attachment,
 } from "../core.js";
 
@@ -93,12 +91,12 @@ export function validate(instance: DndInstance) {
          validationCache = new WeakMap();
       },
 
-      dragenter(event, element, dropCallback) {
+      dragenter(event, element, _, dropCallback) {
          const validate = (dropCallback as any)?.validate;
          validate?.enter?.(event, element);
       },
 
-      dragover(event, element, dropCallback, dataCallback) {
+      dragover(event, element, dataCallback, dropCallback) {
          const validate = (dropCallback as any)?.validate;
          if (!validate) return;
          if (!dataCallback) return console.warn("No data callback passed to validate dragover handler!")
@@ -134,7 +132,7 @@ export function validate(instance: DndInstance) {
          validate.dragover?.(event, element);
       },
 
-      dragleave(event, element, dropCallback) {
+      dragleave(event, element, _, dropCallback) {
          const validate = (dropCallback as any)?.validate;
          if (validate) {
             validationCache.delete(element);
@@ -143,7 +141,7 @@ export function validate(instance: DndInstance) {
          }
       },
 
-      drop(event, element, dropCallback, dataCallback) {
+      drop(event, element, _, dropCallback) {
          const cached = validationCache.get(element);
          const validate = (dropCallback as any)?.validate;
 

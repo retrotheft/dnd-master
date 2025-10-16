@@ -21,6 +21,9 @@
          rejectedDrops++;
          console.log("Allowed item drop was rejected");
       },
+      cancel: () => {
+         console.log("Allowed item drag was cancelled")
+      }
    });
 
    const rejectedItem = dnd.draggable("Rejected Item", {

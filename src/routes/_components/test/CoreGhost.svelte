@@ -26,7 +26,7 @@
          dropCount++
          console.log("Ghost item was dropped!")
       },
-      stop: () => {
+      cancel: () => {
          console.log("Ghost drop was cancelled")
       }
    })
