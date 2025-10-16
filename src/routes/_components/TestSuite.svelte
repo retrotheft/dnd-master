@@ -5,18 +5,20 @@
    import CoreBoth from './test/CoreBoth.svelte'
    import TwoWayValidation from './test/TwoWayValidation.svelte'
    import DynamicGhost from './test/DynamicGhost.svelte'
+   import Touch from './test/Touch.svelte'
 </script>
 
 <main>
    <h1>DND Library Test Suite</h1>
    <p>Testing all combinations of core functionality with middleware</p>
 
-   <CoreOnly />
+   <!-- <CoreOnly />
    <CoreValidation />
    <CoreGhost />
    <CoreBoth />
    <TwoWayValidation />
-   <DynamicGhost />
+   <DynamicGhost /> -->
+   <Touch />
 </main>
 
 <style>

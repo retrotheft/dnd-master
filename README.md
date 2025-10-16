@@ -2,6 +2,8 @@
 
 Lightweight, powerful drag-and-drop for Svelte.
 
+*Please see bottom of page for information about mobile support.*
+
 ## Installation
 
 ```sh
@@ -225,3 +227,7 @@ const dynamicItem = isValidZone.soGive("Item with Dynamic Ghost", {
 ```
 
 This allows you to dynamically update your ghost image, and without the ghost and validate middlewares needing to talk to each other at all!
+
+## Mobile Support
+
+From v1.0.2, there's a **touch** middleware included for mobile support. I've not developed for mobile before so there are probably edge cases (multi-touch, scrolling etc.) that need to be addressed. Please let me know if you run into issues!
