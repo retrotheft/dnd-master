@@ -1,8 +1,9 @@
 <script lang="ts">
    // Create an isolated DND instance for this test
    import { createDnd } from '$lib/core.js'
+   import { touch } from '$lib/middleware/touch.js';
 
-   const dnd = createDnd() // Clean instance with no middleware
+   const dnd = createDnd().use(touch) // Clean instance with no middleware
 
    let dropCount = $state(0)
    let lastDropped = $state("")

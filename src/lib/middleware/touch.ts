@@ -6,7 +6,7 @@ export type TouchOptions = {
   autoGhost?: boolean; // Automatically create a ghost from the dragged element
 };
 
-export function touch(options: TouchOptions = {}) {
+export function createTouch(options: TouchOptions = {}) {
   const longPressDuration = options.longPressDuration ?? 200;
   const scrollThreshold = options.scrollThreshold ?? 10;
   const autoGhost = options.autoGhost ?? true;
@@ -315,4 +315,4 @@ export function touch(options: TouchOptions = {}) {
 }
 
 // Default export with standard options
-export const touchMiddleware = touch();
+export const touch = createTouch();

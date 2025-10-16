@@ -1,9 +1,9 @@
 <script lang="ts">
    // Create an isolated DND instance with touch support
    import { createDnd } from '$lib/core.js'
-   import { touch } from '$lib/middleware/touch.js'
+   import { createTouch } from '$lib/middleware/touch.js'
 
-   const dnd = createDnd().use(touch({
+   const dnd = createDnd().use(createTouch({
       longPressDuration: 200,
       scrollThreshold: 10,
       autoGhost: true // Enable automatic ghost creation
@@ -54,6 +54,16 @@
          touchInfo = "" // ✅ Clear instead of "Left dropzone"
          el.style.background = "#f3e5f5"
          el.style.borderColor = "#9c27b0"
+      },
+      dragend: (e, el) => {
+         touchInfo = ""
+         el.style.background = "#f3e5f5"
+         el.style.borderColor = "#9c27b0"
+      },
+      drop: (e, el) => {
+         touchInfo = ""
+         el.style.background = "#f3e5f5"
+         el.style.borderColor = "#9c27b0"
       }
    })
 </script>
@@ -96,6 +106,11 @@
       padding: 1rem;
       margin: 1rem;
       max-width: 600px;
+      color: black;
+   }
+
+   h3, p {
+      color: white;
    }
 
    .status {
