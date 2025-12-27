@@ -1,6 +1,6 @@
 {
 	"name": "dnd-master",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "Limitless, extensible drag and drop for Svelte",
 	"license": "MIT",
 	"repository": {

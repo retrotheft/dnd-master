@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.3] - 2025-12-28
+
+### Fixed
+
+- fixed default `dnd` export
+
 ## [1.0.2] - 2025-10-17
 
 ### Added
